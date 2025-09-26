@@ -1,0 +1,56 @@
+# Arquivo gerado para um projeto PHP customizado.
+
+# ####################### #
+# Arquivos de Dependência #
+# ####################### #
+# A pasta vendor é onde o Composer instala todas as bibliotecas.
+# Ela é recriada com o comando `composer install`, então nunca deve ir para o Git.
+/vendor/
+
+# ############################## #
+# Arquivos de Configuração e Senhas #
+# ############################## #
+# O arquivo .env contém senhas, chaves de API e outras informações sensíveis.
+# É a regra MAIS IMPORTANTE deste arquivo para a segurança do projeto.
+.env
+.env.*.local
+.env.local
+!.env.example
+
+
+# ################################# #
+# Arquivos de IDE e Sistema Operacional #
+# ################################# #
+# Pasta de configurações do PhpStorm
+/.idea/
+
+# Pasta de configurações do Visual Studio Code
+/.vscode/
+
+# Arquivos de metadados do macOS
+.DS_Store
+._*
+
+# Arquivos de cache de miniaturas do Windows
+Thumbs.db
+ehthumbs.db
+
+# ############ #
+# Logs e Cache #
+# ############ #
+# Ignora qualquer arquivo que termine com .log
+*.log
+
+# Ignora pastas de logs ou cache
+/logs/
+/temp/
+/tmp/
+/cache/
+
+# ############ #
+# Node.js      #
+# ############ #
+# Caso você use ferramentas de frontend (npm, yarn) no mesmo projeto.
+/node_modules/
+npm-debug.log
+yarn-error.log
