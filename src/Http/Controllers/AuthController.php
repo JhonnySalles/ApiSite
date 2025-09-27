@@ -2,7 +2,7 @@
 
 namespace ApiSite\Http\Controllers;
 
-use ApiSite\Models\Acesso;
+use ApiSite\Models\Access;
 use ApiSite\Models\User;
 use DateTimeImmutable;
 use Firebase\JWT\JWT;
@@ -25,7 +25,7 @@ class AuthController {
       return;
     }
 
-    Acesso::create(['user_id' => $user->id]);
+    Access::create(['user_id' => $user->id]);
 
     $secretKey = $_ENV['JWT_SECRET'];
     $issuedAt = new DateTimeImmutable();
