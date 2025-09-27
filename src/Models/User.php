@@ -9,14 +9,14 @@ class User extends Model {
    * O nome da tabela associada ao modelo.
    * @var string
    */
-  protected $table = 'users';
+  protected $table = 'usuarios';
 
   /**
    * Os atributos que podem ser atribuídos em massa.
    *
    * @var array
    */
-  protected $fillable = ['name', 'password',];
+  protected $fillable = ['nome', 'username', 'password',];
 
   /**
    * Os atributos que devem ser ocultados para arrays.

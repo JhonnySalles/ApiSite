@@ -13,7 +13,7 @@ class CreateAcessosTable extends Migration {
   public function up() {
     Capsule::schema()->create('acessos', function (Blueprint $table) {
       $table->id();
-      $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+      $table->foreignId('usuario_id')->constrained('usuarios')->onDelete('cascade');
       $table->timestamps();
     });
   }

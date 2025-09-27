@@ -3,8 +3,13 @@
 require __DIR__ . '/../bootstrap/app.php';
 
 use Bramus\Router\Router;
+use ApiSite\Http\Controllers\DocsController;
 
 $router = new Router();
+
+// --- ROTAS DE DOCUMENTAÇÃO ---
+$router->get('/docs', DocsController::class . '@ui');
+$router->get('/docs/openapi.json', DocsController::class . '@json');
 
 $router->setNamespace('\ApiSite\Http\Controllers');
 
@@ -14,7 +19,7 @@ $router->setNamespace('\ApiSite\Http\Controllers');
  * Ele verifica se um token de API estático foi enviado no cabeçalho.
  */
 $router->before('POST', '/login', function () {
-  $expectedToken = $_ENV['API_TOKEN'];
+  $expectedToken = $_ENV['API_ACCESS_TOKEN'];
   $submittedToken = $_SERVER['HTTP_X_API_KEY'] ?? null;
 
   if ($submittedToken === null || $submittedToken !== $expectedToken) {
@@ -34,10 +39,9 @@ $router->get('/history', 'PublishController@history');
 // --- ROTAS DE CONFIGURAÇÃO ---
 // Todas as rotas dentro deste grupo serão prefixadas com /configuracoes
 // e exigirão a chave de API
-$router->with('/configuration', function () use ($router) {
-  // Middleware que protege todo este grupo
+$router->mount('/configuration', function () use ($router) {
   $router->before('GET|PUT', '/.*', function() {
-    $expectedToken = $_ENV['STATIC_API_TOKEN'];
+    $expectedToken = $_ENV['API_ACCESS_TOKEN'];
     $submittedToken = $_SERVER['HTTP_X_API_KEY'] ?? null;
     if ($submittedToken === null || $submittedToken !== $expectedToken) {
       http_response_code(403);
