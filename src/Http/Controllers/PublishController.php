@@ -14,9 +14,65 @@ class PublishController {
     $this->publishService = new PublishService();
   }
 
+
+  // POST /api/publish
   /**
-   * Realiza a postagem em várias platafornas selecionadas.
-   * @param string $plataforma O nome da plataforma vindo da URL.
+   * @OA\Post(
+   * path="/api/publish",
+   * tags={"Postagens"},
+   * summary="Cria uma nova postagem para múltiplas plataformas.",
+   * description="Recebe os dados de uma postagem (texto, imagens, etc.) e a lista de plataformas onde deve ser publicada. A requisição é processada de forma assíncrona.",
+   * @OA\Parameter(
+   * name="X-API-KEY",
+   * in="header",
+   * required=true,
+   * description="Chave de API estática para autorizar a requisição.",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\RequestBody(
+   * required=true,
+   * description="Payload contendo os dados da postagem a ser criada.",
+   * @OA\JsonContent(
+   * type="object",
+   * required={"platforms"},
+   * @OA\Property(property="platforms", type="array", @OA\Items(type="string", example="tumblr")),
+   * @OA\Property(property="text", type="string", example="Este é um texto de exemplo."),
+   * @OA\Property(property="tags", type="array", @OA\Items(type="string", example="php")),
+   * @OA\Property(property="callbackUrl", type="string", format="uri", example="https://meusite.com/callback"),
+   * @OA\Property(property="scheduleDate", type="string", format="date-time", example="2025-10-02T16:30:00Z"),
+   * @OA\Property(
+   * property="images",
+   * type="array",
+   * @OA\Items(
+   * type="object",
+   * @OA\Property(property="base64", type="string", format="byte"),
+   * @OA\Property(property="platforms", type="array", @OA\Items(type="string"))
+   * )
+   * ),
+   * @OA\Property(
+   * property="platformOptions",
+   * type="object",
+   * @OA\Property(
+   * property="tumblr",
+   * type="object",
+   * @OA\Property(property="blogName", type="string", example="meu-blog")
+   * )
+   * )
+   * )
+   * ),
+   * @OA\Response(
+   * response=202,
+   * description="Requisição aceita. A postagem foi recebida e agendada.",
+   * @OA\JsonContent(
+   * type="object",
+   * @OA\Property(property="message", type="string", example="Postagem recebida e agendada para envio."),
+   * @OA\Property(property="post_id", type="integer", example=1)
+   * )
+   * ),
+   * @OA\Response(response=400, description="Payload inválido."),
+   * @OA\Response(response=403, description="Acesso não autorizado (X-API-KEY inválida)."),
+   * @OA\Response(response=500, description="Erro interno do servidor.")
+   * )
    */
   public function postsAll() {
     $payload = json_decode(file_get_contents('php://input'), true);
@@ -28,10 +84,10 @@ class PublishController {
     }
 
     try {
-      $postagem = $this->publishService->savePosts($payload);
+      $post = $this->publishService->savePosts($payload);
 
       http_response_code(202);
-      echo json_encode(['message' => 'Postagem recebida e agendada para envio.', 'post_id' => $postagem->id]);
+      echo json_encode(['message' => 'Postagem recebida e agendada para envio.', 'post_id' => $post->id]);
 
     } catch (Exception $e) {
       LogService::getInstance()->error('Falha ao criar as postagens.', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
@@ -40,74 +96,77 @@ class PublishController {
     }
   }
 
+  // POST /api/publish/{platform}
   /**
-   * Realiza a postagem em uma única plataforma.
-   * @param string $plataforma O nome da plataforma vindo da URL.
+   * @OA\Post(
+   * path="/api/publish/{platform}",
+   * tags={"Postagens"},
+   * summary="Cria uma nova postagem para uma única plataforma.",
+   * description="Recebe os dados de uma postagem e a publica na plataforma especificada na URL.",
+   * @OA\Parameter(
+   * name="X-API-KEY",
+   * in="header",
+   * required=true,
+   * description="Chave de API estática para autorizar a requisição.",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\Parameter(
+   * name="platform",
+   * in="path",
+   * required=true,
+   * description="O nome da plataforma onde a postagem será criada (ex: tumblr).",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\RequestBody(
+   * required=true,
+   * description="Payload contendo os dados da postagem a ser criada.",
+   * @OA\JsonContent(
+   * type="object",
+   * @OA\Property(property="text", type="string", example="Postando apenas no Tumblr!"),
+   * @OA\Property(property="images", type="array", @OA\Items(type="string", format="byte")),
+   * @OA\Property(property="tags", type="array", @OA\Items(type="string", example="api")),
+   * @OA\Property(
+   * property="platformOptions",
+   * type="object",
+   * @OA\Property(
+   * property="tumblr",
+   * type="object",
+   * @OA\Property(property="blogName", type="string", example="meu-blog")
+   * )
+   * )
+   * )
+   * ),
+   * @OA\Response(
+   * response=200,
+   * description="Postagem criada com sucesso.",
+   * @OA\JsonContent(
+   * type="object",
+   * @OA\Property(property="message", type="string", example="Postagem para 'tumblr' criada com sucesso."),
+   * @OA\Property(property="post_id", type="integer", example=2)
+   * )
+   * ),
+   * @OA\Response(response=403, description="Acesso não autorizado (X-API-KEY inválida)."),
+   * @OA\Response(response=404, description="Plataforma não encontrada."),
+   * @OA\Response(response=500, description="Erro interno do servidor.")
+   * )
    */
-  public function post(string $plataforma) {
+  public function post(string $platform) {
     $payload = json_decode(file_get_contents('php://input'), true);
 
     try {
-      $postagem = $this->publishService->savePost($plataforma, $payload);
+      $post = $this->publishService->savePost($platform, $payload);
       http_response_code(200);
-      echo json_encode(['message' => "Postagem para '$plataforma' criada com sucesso.", 'post_id' => $postagem->id]);
+      echo json_encode(['message' => "Postagem para '$platform' criada com sucesso.", 'post_id' => $post->id]);
 
     } catch (InvalidArgumentException $e) {
       http_response_code(404);
       echo json_encode(['message' => $e->getMessage()]);
 
     } catch (Exception $e) {
-      LogService::getInstance()->error("Falha ao criar postagem única para '$plataforma'.", ['error' => $e->getMessage()]);
+      LogService::getInstance()->error("Falha ao criar postagem única para '$platform'.", ['error' => $e->getMessage()]);
 
       http_response_code(500);
       echo json_encode(['message' => 'Ocorreu um erro interno ao processar a postagem.']);
-    }
-  }
-
-  /**
-   * @OA\Get(
-   * path="/historico",
-   * tags={"Postagens"},
-   * summary="Retorna o histórico de postagens paginado.",
-   * description="Consulta a tabela de postagens e retorna um array paginado de objetos.",
-   * @OA\Parameter(
-   * name="page",
-   * in="query",
-   * description="Número da página a ser retornada.",
-   * required=false,
-   * @OA\Schema(type="integer", default=1)
-   * ),
-   * @OA\Parameter(
-   * name="size",
-   * in="query",
-   * description="Número de itens por página.",
-   * required=false,
-   * @OA\Schema(type="integer", default=10)
-   * ),
-   * @OA\Response(
-   * response=200,
-   * description="Operação bem-sucedida.",
-   * @OA\JsonContent(type="object", description="Objeto de paginação contendo o histórico.")
-   * ),
-   * @OA\Response(response=403, description="Acesso não autorizado.")
-   * )
-   */
-  public function history() {
-    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $size = isset($_GET['size']) ? (int)$_GET['size'] : 10;
-
-    try {
-      $historico = $this->publishService->getHistoryPaginated($page, $size);
-
-      http_response_code(200);
-      header('Content-Type: application/json');
-      echo $historico->toJson();
-
-    } catch (\Exception $e) {
-      LogService::getInstance()->error('Falha ao buscar histórico.', ['error' => $e->getMessage()]);
-
-      http_response_code(500);
-      echo json_encode(['message' => 'Ocorreu um erro ao buscar o histórico de postagens.']);
     }
   }
 

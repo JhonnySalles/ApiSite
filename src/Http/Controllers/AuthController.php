@@ -9,6 +9,7 @@ use Firebase\JWT\JWT;
 
 class AuthController {
 
+  // POST /login
   /**
    * @OA\Post(
    * path="/login",
@@ -26,7 +27,7 @@ class AuthController {
    * required=true,
    * description="Credenciais do usuário para login.",
    * @OA\JsonContent(
-   * required={"usuario", "password"},
+   * required={"username", "password"},
    * @OA\Property(property="usuario", type="string", format="text", example="admin"),
    * @OA\Property(property="password", type="string", format="password", example="password123")
    * )
@@ -81,13 +82,13 @@ class AuthController {
   public function login() {
     $input = json_decode(file_get_contents('php://input'), true);
 
-    if (!isset($input['user']) || !isset($input['password'])) {
+    if (!isset($input['username']) || !isset($input['password'])) {
       http_response_code(400);
       echo json_encode(['message' => 'Usuário e senha são obrigatórios.']);
       return;
     }
 
-    $user = User::where('user', $input['user'])->first();
+    $user = User::where('username', $input['username'])->first();
 
     if (!$user || !password_verify($input['password'], $user->password)) {
       http_response_code(401); // Unauthorized
@@ -95,7 +96,7 @@ class AuthController {
       return;
     }
 
-    Access::create(['user_id' => $user->id]);
+    Access::create(['usuario_id' => $user->id]);
 
     $secretKey = $_ENV['JWT_SECRET'];
     $issuedAt = new DateTimeImmutable();
@@ -106,7 +107,7 @@ class AuthController {
     $accessToken = JWT::encode($data, $secretKey, 'HS256');
     $refreshToken = bin2hex(random_bytes(32));
 
-    $response = ['status' => 'success', 'user' => ['name' => $user->name,], 'authorisation' => ['access_token' => $accessToken, 'refresh_token' => $refreshToken, 'token_type' => 'bearer', 'expires_in' => $expire]];
+    $response = ['status' => 'success', 'username' => ['name' => $user->nome,], 'authorisation' => ['access_token' => $accessToken, 'refresh_token' => $refreshToken, 'token_type' => 'bearer', 'expires_in' => $expire]];
 
     header('Content-Type: application/json');
     echo json_encode($response);

@@ -9,7 +9,7 @@ class CreateImagensPostagemTable extends Migration {
     Capsule::schema()->create('imagens_postagem', function (Blueprint $table) {
       $table->id();
       $table->foreignId('postagem_id')->constrained('postagens')->onDelete('cascade');
-      $table->longText('url');
+      $table->string('url', 2048);
       $table->json('plataformas')->nullable();
       $table->timestamps();
     });

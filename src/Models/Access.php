@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Access extends Model {
   protected $table = 'acessos';
-  protected $fillable = ['user_id'];
+  protected $fillable = ['usuario_id'];
 
   /**
    * Define a relação: um Access pertence a um User.

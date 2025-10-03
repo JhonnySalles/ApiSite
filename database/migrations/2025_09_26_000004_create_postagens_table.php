@@ -11,6 +11,8 @@ class CreatePostagensTable extends Migration {
       $table->text('texto')->nullable();
       $table->json('tags')->nullable();
       $table->json('opcoes_plataforma')->nullable();
+      $table->enum('tipo', ['RASCUNHO', 'POST'])->default('POST');
+      $table->enum('situacao', ['PENDENTE', 'ENVIADO', 'SUCESSO', 'ALERTA', 'EXCLUIDO'])->default('PENDENTE');
       $table->string('callback_url')->nullable();
       $table->timestamp('data_postagem');
       $table->timestamps();

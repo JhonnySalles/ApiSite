@@ -4,18 +4,27 @@ namespace ApiSite\Http\Controllers;
 
 use OpenApi\Generator;
 
+/**
+ * @OA\Info(
+ * title="API de Postagem em Redes Sociais",
+ * version="1.0.0",
+ * description="Esta é a documentação da API para o projeto de postagem em múltiplas plataformas."
+ * )
+ * @OA\Server(
+ * url="http://localhost:8000",
+ * description="Servidor de Desenvolvimento Local"
+ * )
+ */
 class DocsController {
   /**
    * Gera e serve a especificação OpenAPI (swagger.json) dinamicamente.
    */
   public function json() {
-    $sourcePath = __DIR__ . '/';
-
+    $controllersPath = __DIR__;
     try {
-      $openapi = Generator::scan([$sourcePath]);
+      $openapi = Generator::scan([$controllersPath]);
       header('Content-Type: application/json');
       echo $openapi->toJson();
-
     } catch (\Exception $e) {
       http_response_code(500);
       echo json_encode(['message' => 'Erro ao gerar a documentação OpenAPI.', 'error' => $e->getMessage()]);
@@ -43,13 +52,13 @@ class DocsController {
         <script>
           window.onload = () => {
             window.ui = SwaggerUIBundle({
-              url: '/docs/openapi.json', // <-- Aponta para o nosso próprio endpoint JSON
+              url: '/docs/api-spec',
               dom_id: '#swagger-ui',
             });
           };
         </script>
         </body>
         </html>
-        HTML;
+HTML;
   }
 }

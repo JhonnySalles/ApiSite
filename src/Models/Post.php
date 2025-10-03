@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Post extends Model {
   protected $table = 'postagens';
-  protected $fillable = ['texto', 'tags', 'opcoes_plataforma', 'callback_url', 'data_postagem'];
+  protected $fillable = ['texto', 'tags', 'tipo', 'situacao', 'opcoes_plataforma', 'callback_url', 'data_postagem'];
 
   protected $casts = ['tags' => 'array', 'opcoes_plataforma' => 'array',];
 
