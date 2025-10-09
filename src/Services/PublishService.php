@@ -2,7 +2,6 @@
 
 namespace ApiSite\Services;
 
-use ApiSite\Models\Image;
 use ApiSite\Models\Platform;
 use ApiSite\Models\Post;
 use ApiSite\Models\Send;
@@ -35,7 +34,7 @@ class PublishService {
     DB::connection()->beginTransaction();
 
     try {
-      $post = Post::updateOrCreate(['id' => $payload['id'] ?? null], ['tipo' => 'POST', 'situacao' => $payload['situacao'] ?? 'PENDENTE', 'texto' => $payload['text'] ?? null, 'tags' => $payload['tags'] ?? null, 'opcoes_plataforma' => $payload['platformOptions'] ?? null, 'callback_url' => $payload['callbackUrl'] ?? null, 'data_postagem' => $payload['scheduleDate'] ?? new DateTime(),]);
+      $post = Post::updateOrCreate(['id' => $payload['id'] ?? null], ['tipo' => 'POST', 'situacao' => $payload['situacao'] ?? 'PENDENTE', 'texto' => $payload['text'] ?? null, 'tags' => $payload['tags'] ?? null, 'opcoes_plataforma' => $payload['platformOptions'] ?? null, 'callback_url' => $payload['callbackUrl'] ?? null, 'data_postagem' => new DateTime(),]);
 
       $post->imagens()->delete();
       if (!empty($imageUrls)) {
@@ -46,9 +45,8 @@ class PublishService {
       $post->envios()->delete();
       $platformsDB = Platform::whereIn('nome', $payload['platforms'])->get()->keyBy('nome');
       foreach ($payload['platforms'] as $platformName) {
-        if (isset($platformsDB[$platformName])) {
+        if (isset($platformsDB[$platformName]))
           Send::create(['postagem_id' => $post->id, 'plataforma_id' => $platformsDB[$platformName]->id,]);
-        }
       }
 
       DB::connection()->commit();
@@ -71,26 +69,15 @@ class PublishService {
    */
   public function savePost(string $platformName, array $payload): Post {
     $platform = Platform::where('nome', $platformName)->where('ativa', true)->first();
-    if (!$platform) {
+    if (!$platform)
       throw new InvalidArgumentException("Plataforma '$platformName' não encontrada ou está inativa.");
-    }
 
     $imageUrls = $this->imageService->processAndUploadImages($payload['images'] ?? null);
 
     DB::connection()->beginTransaction();
 
     try {
-      $post = Post::updateOrCreate(
-        ['id' => $payload['id'] ?? null],
-        [
-          'tipo' => 'POST',
-          'situacao' => $payload['situacao'] ?? 'PENDENTE',
-          'texto' => $payload['text'] ?? null,
-          'tags' => $payload['tags'] ?? null,
-          'opcoes_plataforma' => $payload['platformOptions'] ?? null,
-          'data_postagem' => new DateTime(),
-        ]
-      );
+      $post = Post::updateOrCreate(['id' => $payload['id'] ?? null], ['tipo' => 'POST', 'situacao' => $payload['situacao'] ?? 'PENDENTE', 'texto' => $payload['text'] ?? null, 'tags' => $payload['tags'] ?? null, 'opcoes_plataforma' => $payload['platformOptions'] ?? null, 'data_postagem' => new DateTime(),]);
 
       $post->imagens()->delete();
       if (!empty($imageUrls)) {
@@ -99,10 +86,7 @@ class PublishService {
       }
 
       $post->envios()->delete();
-      Send::create([
-        'postagem_id' => $post->id,
-        'plataforma_id' => $platform->id,
-      ]);
+      Send::create(['postagem_id' => $post->id, 'plataforma_id' => $platform->id,]);
 
       DB::connection()->commit();
       return $post->load(['imagens', 'envios']);
@@ -127,7 +111,6 @@ class PublishService {
     $validSituacoes = ['PENDENTE', 'ENVIADO', 'SUCESSO', 'ALERTA', 'EXCLUIDO'];
     if (!in_array($newSituacao, $validSituacoes))
       throw new InvalidArgumentException("Situação '$newSituacao' inválida.");
-
 
     $post = Post::where('id', $postId)->firstOrFail();
     $post->situacao = $newSituacao;
@@ -166,20 +149,10 @@ class PublishService {
 
     DB::connection()->beginTransaction();
     try {
-      $draft = Post::updateOrCreate(
-        ['id' => $payload['id'] ?? null],
-        [
-          'tipo' => 'RASCUNHO',
-          'situacao' => $payload['situacao'] ?? 'PENDENTE',
-          'texto' => $payload['text'] ?? null,
-          'tags' => $payload['tags'] ?? null,
-          'opcoes_plataforma' => $payload['platformOptions'] ?? null,
-          'data_postagem' => $payload['scheduleDate'] ?? new DateTime(),
-        ]
-      );
+      $draft = Post::updateOrCreate(['id' => $payload['id'] ?? null], ['tipo' => 'RASCUNHO', 'situacao' => $payload['situacao'] ?? 'PENDENTE', 'texto' => $payload['text'] ?? null, 'tags' => $payload['tags'] ?? null, 'opcoes_plataforma' => $payload['platformOptions'] ?? null, 'data_postagem' => new DateTime(),]);
 
       $draft->imagens()->delete();
-      if(!empty($imageUrls)) {
+      if (!empty($imageUrls)) {
         $imageData = array_map(fn($url) => ['url' => $url], $imageUrls);
         $draft->imagens()->createMany($imageData);
       }

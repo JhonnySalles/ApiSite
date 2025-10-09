@@ -45,6 +45,7 @@ $router->before('POST', '/login', function () {
   }
 });
 $router->post('/login', 'AuthController@login');
+$router->post('/refresh', 'AuthController@refresh');
 
 // --- GRUPO DE ROTAS PROTEGIDAS DA API ---
 $router->mount('/api', function () use ($router) {
