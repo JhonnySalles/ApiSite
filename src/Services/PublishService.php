@@ -5,6 +5,7 @@ namespace ApiSite\Services;
 use ApiSite\Models\Platform;
 use ApiSite\Models\Post;
 use ApiSite\Models\Send;
+use ApiSite\Models\Tag;
 use DateTime;
 use Exception;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -36,13 +37,13 @@ class PublishService {
     try {
       $post = Post::updateOrCreate(['id' => $payload['id'] ?? null], ['tipo' => 'POST', 'situacao' => $payload['situacao'] ?? 'PENDENTE', 'texto' => $payload['text'] ?? null, 'tags' => $payload['tags'] ?? null, 'opcoes_plataforma' => $payload['platformOptions'] ?? null, 'callback_url' => $payload['callbackUrl'] ?? null, 'data_postagem' => new DateTime(),]);
 
-      $post->imagens()->delete();
+      $post->images()->delete();
       if (!empty($imageUrls)) {
         $imageData = array_map(fn($url) => ['url' => $url], $imageUrls);
-        $post->imagens()->createMany($imageData);
+        $post->images()->createMany($imageData);
       }
 
-      $post->envios()->delete();
+      $post->sends()->delete();
       $platformsDB = Platform::whereIn('nome', $payload['platforms'])->get()->keyBy('nome');
       foreach ($payload['platforms'] as $platformName) {
         if (isset($platformsDB[$platformName]))
@@ -50,7 +51,7 @@ class PublishService {
       }
 
       DB::connection()->commit();
-      return $post->load(['imagens', 'envios']);
+      return $post->load(['images', 'sends']);
 
     } catch (Exception $e) {
       DB::connection()->rollBack();
@@ -74,22 +75,33 @@ class PublishService {
 
     $imageUrls = $this->imageService->processAndUploadImages($payload['images'] ?? null);
 
+    $tagIds = [];
+    if (!empty($payload['tags'])) {
+      foreach ($payload['tags'] as $tagName) {
+        $tag = Tag::firstOrCreate(['tag' => trim($tagName)]);
+        $tagIds[] = $tag->id;
+      }
+    }
+
     DB::connection()->beginTransaction();
 
     try {
-      $post = Post::updateOrCreate(['id' => $payload['id'] ?? null], ['tipo' => 'POST', 'situacao' => $payload['situacao'] ?? 'PENDENTE', 'texto' => $payload['text'] ?? null, 'tags' => $payload['tags'] ?? null, 'opcoes_plataforma' => $payload['platformOptions'] ?? null, 'data_postagem' => new DateTime(),]);
+      $post = Post::updateOrCreate(['id' => $payload['id'] ?? null], ['tipo' => 'POST', 'situacao' => $payload['situacao'] ?? 'PENDENTE', 'texto' => $payload['text'] ?? null, 'opcoes_plataforma' => $payload['platformOptions'] ?? null, 'data_postagem' => new DateTime(),]);
 
-      $post->imagens()->delete();
+      $post->images()->delete();
       if (!empty($imageUrls)) {
         $imageData = array_map(fn($url) => ['url' => $url], $imageUrls);
-        $post->imagens()->createMany($imageData);
+        $post->images()->createMany($imageData);
       }
 
-      $post->envios()->delete();
+      if (!empty($tagIds))
+        $post->tags()->sync($tagIds);
+
+      $post->sends()->delete();
       Send::create(['postagem_id' => $post->id, 'plataforma_id' => $platform->id,]);
 
       DB::connection()->commit();
-      return $post->load(['imagens', 'envios']);
+      return $post->load(['images', 'sends', 'tags']);
 
     } catch (\Exception $e) {
       DB::connection()->rollBack();
@@ -133,7 +145,7 @@ class PublishService {
     // Usamos with() para carregar os relacionamentos de forma otimizada (Eager Loading)
     // Isso evita o problema de N+1 queries.
     // Trazemos cada postagem com seus envios, e para cada envio, sua plataforma.
-    return Post::with(['envios.plataforma', 'imagens'])->where('situacao', '!=', 'EXCLUIDO')->orderBy('created_at', 'desc')->paginate($perPage = $size, $columns = ['*'], $pageName = 'page', $page = $page);
+    return Post::with(['sends.plataforma', 'images'])->where('situacao', '!=', 'EXCLUIDO')->orderBy('created_at', 'desc')->paginate($perPage = $size, $columns = ['*'], $pageName = 'page', $page = $page);
   }
 
 
@@ -147,18 +159,29 @@ class PublishService {
   public function saveDraft(array $payload): Post {
     $imageUrls = $this->imageService->processAndUploadImages($payload['images'] ?? null);
 
+    $tagIds = [];
+    if (!empty($payload['tags'])) {
+      foreach ($payload['tags'] as $tagName) {
+        $tag = Tag::firstOrCreate(['tag' => trim($tagName)]);
+        $tagIds[] = $tag->id;
+      }
+    }
+
     DB::connection()->beginTransaction();
     try {
-      $draft = Post::updateOrCreate(['id' => $payload['id'] ?? null], ['tipo' => 'RASCUNHO', 'situacao' => $payload['situacao'] ?? 'PENDENTE', 'texto' => $payload['text'] ?? null, 'tags' => $payload['tags'] ?? null, 'opcoes_plataforma' => $payload['platformOptions'] ?? null, 'data_postagem' => new DateTime(),]);
+      $draft = Post::updateOrCreate(['id' => $payload['id'] ?? null], ['tipo' => 'RASCUNHO', 'situacao' => $payload['situacao'] ?? 'PENDENTE', 'texto' => $payload['text'] ?? null, 'opcoes_plataforma' => $payload['platformOptions'] ?? null, 'data_postagem' => new DateTime(),]);
 
-      $draft->imagens()->delete();
+      $draft->images()->delete();
       if (!empty($imageUrls)) {
         $imageData = array_map(fn($url) => ['url' => $url], $imageUrls);
-        $draft->imagens()->createMany($imageData);
+        $draft->images()->createMany($imageData);
       }
 
+      if (!empty($tagIds))
+        $draft->tags()->sync($tagIds);
+
       DB::connection()->commit();
-      return $draft->load('imagens');
+      return $draft->load('images', 'tags');
 
     } catch (Exception $e) {
       DB::connection()->rollBack();
@@ -195,7 +218,7 @@ class PublishService {
    * @return LengthAwarePaginator O resultado paginado da coleção de Rascunhos (Postagens).
    */
   public function getDraftsPaginated(int $page = 1, int $size = 10): LengthAwarePaginator {
-    return Post::where('tipo', 'RASCUNHO')->where('situacao', '!=', 'EXCLUIDO')->orderBy('created_at', 'desc')->paginate($size, ['*'], 'page', $page);
+    return Post::with('images')->where('tipo', 'RASCUNHO')->where('situacao', '!=', 'EXCLUIDO')->orderBy('created_at', 'desc')->paginate($size, ['*'], 'page', $page);
   }
 
   /**
@@ -207,7 +230,7 @@ class PublishService {
    * @throws ModelNotFoundException Se o rascunho não for encontrado ou não atender às condições.
    */
   public function getDraft(int $id): ?Post {
-    return Post::where('id', $id)->where('tipo', 'RASCUNHO')->where('situacao', '!=', 'EXCLUIDO')->firstOrFail();
+    return Post::with('images')->where('id', $id)->where('tipo', 'RASCUNHO')->where('situacao', '!=', 'EXCLUIDO')->firstOrFail();
   }
 
   /**
@@ -222,5 +245,14 @@ class PublishService {
     $draft = $this->getDraft($id);
     $draft->situacao = 'EXCLUIDO';
     return $draft->save();
+  }
+
+  /**
+   * Realiza a consulta de todas as tags presente no banco.
+   *
+   * @return \Illuminate\Database\Eloquent\Collection
+   */
+  public function getTags() {
+    return Tag::orderBy('tag')->get();
   }
 }

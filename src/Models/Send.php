@@ -12,6 +12,6 @@ class Send extends Model {
    * Um Envio pertence a uma Plataforma.
    */
   public function platform() {
-    return $this->belongsTo(Platform::class);
+    return $this->belongsTo(Platform::class,'postagem_id');
   }
 }

@@ -90,6 +90,9 @@ $router->mount('/api', function () use ($router) {
   // Endpoint de Histórico (ex: /api/history)
   $router->get('/history', 'HistoryController@history');
 
+  // Endpoint de Tags (ex: /api/tags)
+  $router->get('/tags', 'TagController@tags');
+
   // Endpoint de Plataforma (ex: /api/platforms/tumblr/blogs)
   $router->get('/platforms/tumblr/blogs', 'PlatformController@getTumblrBlogs');
 

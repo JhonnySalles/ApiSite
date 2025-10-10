@@ -2,6 +2,7 @@
 
 namespace ApiSite\Http\Controllers;
 
+use ApiSite\Services\LogService;
 use ApiSite\Services\ConfigurationService;
 use InvalidArgumentException;
 
@@ -24,6 +25,13 @@ class ConfigurationController {
    * in="header",
    * required=true,
    * description="Chave de API estática para autorizar a requisição.",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
    * @OA\Schema(type="string")
    * ),
    * @OA\Response(
@@ -85,6 +93,13 @@ class ConfigurationController {
    * @OA\Schema(type="string")
    * ),
    * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\Parameter(
    * name="name",
    * in="path",
    * required=true,
@@ -125,6 +140,13 @@ class ConfigurationController {
    * description="Chave de API estática para autorizar a requisição.",
    * @OA\Schema(type="string")
    * ),
+   * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
+   * @OA\Schema(type="string")
+   * ),
    * @OA\RequestBody(
    * required=true,
    * description="Array de objetos de plataforma para atualização.",
@@ -157,9 +179,9 @@ class ConfigurationController {
       http_response_code(200);
       echo json_encode(['message' => 'Plataformas atualizadas com sucesso.']);
     } catch (\Exception $e) {
-      \ApiSite\Services\LogService::getInstance()->error('Falha na atualização em massa de plataformas.', ['error' => $e->getMessage()]);
+      LogService::getInstance()->error('Falha na atualização em massa de plataformas.', ['error' => $e->getMessage()]);
       http_response_code(500);
-      echo json_encode(['message' => 'Ocorreu um erro ao atualizar as plataformas.']);
+      echo json_encode(['message' => 'Ocorreu um erro ao atualizar as plataformas. ' . $e->getMessage()]);
     }
   }
 
@@ -175,6 +197,13 @@ class ConfigurationController {
    * in="header",
    * required=true,
    * description="Chave de API estática para autorizar a requisição.",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
    * @OA\Schema(type="string")
    * ),
    * @OA\Parameter(
@@ -214,7 +243,7 @@ class ConfigurationController {
       http_response_code(400); // Bad Request ou 404 Not Found
       echo json_encode(['message' => $e->getMessage()]);
     } catch (\Exception $e) {
-      \ApiSite\Services\LogService::getInstance()->error("Falha ao atualizar a plataforma '$name'.", ['error' => $e->getMessage()]);
+      LogService::getInstance()->error("Falha ao atualizar a plataforma '$name'.", ['error' => $e->getMessage()]);
       http_response_code(500);
       echo json_encode(['message' => "Ocorreu um erro ao atualizar a plataforma '$name'."]);
     }

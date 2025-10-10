@@ -2,9 +2,8 @@
 
 namespace ApiSite\Http\Controllers;
 
-use ApiSite\Services\PublishService;
 use ApiSite\Services\LogService;
-
+use ApiSite\Services\PublishService;
 use Exception;
 
 class PublishController {
@@ -16,6 +15,7 @@ class PublishController {
 
 
   // POST /api/publish
+
   /**
    * @OA\Post(
    * path="/api/publish",
@@ -27,6 +27,13 @@ class PublishController {
    * in="header",
    * required=true,
    * description="Chave de API estática para autorizar a requisição.",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
    * @OA\Schema(type="string")
    * ),
    * @OA\RequestBody(
@@ -92,11 +99,12 @@ class PublishController {
     } catch (Exception $e) {
       LogService::getInstance()->error('Falha ao criar as postagens.', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
       http_response_code(500);
-      echo json_encode(['message' => 'Ocorreu um erro ao processar sua solicitação.',]);
+      echo json_encode(['message' => 'Ocorreu um erro ao processar sua solicitação. ' . $e->getMessage()]);
     }
   }
 
   // POST /api/publish/{platform}
+
   /**
    * @OA\Post(
    * path="/api/publish/{platform}",
@@ -108,6 +116,13 @@ class PublishController {
    * in="header",
    * required=true,
    * description="Chave de API estática para autorizar a requisição.",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
    * @OA\Schema(type="string")
    * ),
    * @OA\Parameter(
@@ -166,7 +181,7 @@ class PublishController {
       LogService::getInstance()->error("Falha ao criar postagem única para '$platform'.", ['error' => $e->getMessage()]);
 
       http_response_code(500);
-      echo json_encode(['message' => 'Ocorreu um erro interno ao processar a postagem.']);
+      echo json_encode(['message' => 'Ocorreu um erro interno ao processar a postagem. ' . $e->getMessage()]);
     }
   }
 

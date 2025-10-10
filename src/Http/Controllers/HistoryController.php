@@ -102,7 +102,7 @@ class HistoryController {
       LogService::getInstance()->error('Falha ao buscar histórico.', ['error' => $e->getMessage()]);
 
       http_response_code(500);
-      echo json_encode(['message' => 'Ocorreu um erro ao buscar o histórico de postagens.']);
+      echo json_encode(['message' => 'Ocorreu um erro ao buscar o histórico de postagens. ' . $e->getMessage()]);
     }
   }
 

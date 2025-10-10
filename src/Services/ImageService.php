@@ -2,14 +2,17 @@
 
 namespace ApiSite\Services;
 
-use Supabase\CreateClient;
+use Aws\S3\S3Client;
+use InvalidArgumentException;
 
 class ImageService {
   private $supabase;
   private $bucketName = 'SitePost';
+  private $url;
 
   public function __construct() {
-    $this->supabase = new CreateClient($_ENV['SUPABASE_URL'], $_ENV['SUPABASE_KEY']);
+    $this->url = $_ENV['SUPABASE_URL'];
+    $this->supabase = new S3Client(['version' => 'latest', 'region' => $_ENV['SUPABASE_S3_REGION'], 'endpoint' => $_ENV['SUPABASE_S3_ENDPOINT'], 'use_path_style_endpoint' => true, 'credentials' => ['key' => $_ENV['SUPABASE_S3_ACCESS_KEY_ID'], 'secret' => $_ENV['SUPABASE_S3_SECRET_ACCESS_KEY'],],]);
   }
 
   /**
@@ -25,7 +28,7 @@ class ImageService {
 
     $finalUrls = [];
 
-    foreach ($imagesPayload as $image) {
+    foreach ($imagesPayload as $index => $image) {
       if (!empty($image['url'])) {
         $finalUrls[] = $image['url'];
         continue;
@@ -34,25 +37,35 @@ class ImageService {
       if (empty($image['base64']))
         continue;
 
-      // Ex: "data:image/png;base64,iVBORw0KGgo..."
-      list($type, $data) = explode(';', $image['base64']);
-      list(, $data) = explode(',', $data);
-      $decodedData = base64_decode($data);
+      $pattern = '/^data:(image\/(?:png|jpeg|gif|webp));base64,(.*)$/';
+      if (!preg_match($pattern, $image['base64'], $matches))
+        throw new InvalidArgumentException("A imagem na posição $index está com um formato de base64 inválido. O formato esperado é 'data:image/jpeg;base64,...'");
 
-      $mimeType = explode(':', $type)[1];
+
+      $mimeType = $matches[1];
+      $base64Data = $matches[2];
       $extension = explode('/', $mimeType)[1];
+      $decodedData = base64_decode($base64Data);
 
-      $fileName = 'uploads/' . uniqid() . '_' . time() . '.' . $extension;
+      $filePath = uniqid('img_', true) . '.' . $extension;
 
-      $response = $this->supabase->storage()->from($this->bucketName)->upload($fileName, $decodedData, ['contentType' => $mimeType, 'cacheControl' => '3600', 'upsert' => false]);
+      try {
+        $this->supabase->putObject([
+          'Bucket' => $this->bucketName,
+          'Key'    => $filePath,
+          'Body'   => $decodedData,
+          'ContentType' => $mimeType,
+          'ACL'    => 'public-read',
+        ]);
 
-      if (isset($response['error'])) {
-        LogService::getInstance()->error('Falha no upload para o Supabase', ['error' => $response['error']]);
+        $publicUrl = $this->url . '/storage/v1/object/public/' . $this->bucketName . '/' . $filePath;
+        $finalUrls[] = $publicUrl;
+
+      } catch (RequestException $e) {
+        $responseBody = $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : $e->getMessage();
+        LogService::getInstance()->error('Falha no upload para o Supabase via Guzzle', ['error' => $responseBody]);
         throw new \Exception('Não foi possível fazer o upload da imagem.');
       }
-
-      $publicUrlData = $this->supabase->storage()->from($this->bucketName)->getPublicUrl($fileName);
-      $finalUrls[] = $publicUrlData['publicUrl'];
     }
 
     return $finalUrls;

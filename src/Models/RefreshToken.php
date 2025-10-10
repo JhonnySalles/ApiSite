@@ -10,6 +10,6 @@ class RefreshToken extends Model {
   protected $fillable = ['usuario_id', 'token', 'expires_at',];
 
   public function user() {
-    return $this->belongsTo(User::class);
+    return $this->belongsTo(User::class,'usuario_id');
   }
 }

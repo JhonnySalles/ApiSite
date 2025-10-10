@@ -2,6 +2,7 @@
 
 namespace ApiSite\Http\Controllers;
 
+use ApiSite\Services\LogService;
 use ApiSite\Services\PublishService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
@@ -25,6 +26,13 @@ class DraftController {
    * in="header",
    * required=true,
    * description="Chave de API estática para autorizar a requisição.",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
    * @OA\Schema(type="string")
    * ),
    * @OA\RequestBody(
@@ -79,10 +87,10 @@ class DraftController {
       header('Content-Type: application/json');
       echo $draft->toJson();
     } catch (Exception $e) {
-      \ApiSite\Services\LogService::getInstance()->error('Falha ao salvar rascunho.', ['error' => $e->getMessage()]);
+      LogService::getInstance()->error('Falha ao salvar rascunho.', ['error' => $e->getMessage()]);
       http_response_code(500);
       header('Content-Type: application/json');
-      echo json_encode(['message' => 'Ocorreu um erro ao salvar o rascunho.']);
+      echo json_encode(['message' => 'Ocorreu um erro ao salvar o rascunho. ' . $e->getMessage()]);
     }
   }
 
@@ -98,6 +106,13 @@ class DraftController {
    * in="header",
    * required=true,
    * description="Chave de API estática para autorizar a requisição.",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
    * @OA\Schema(type="string")
    * ),
    * @OA\RequestBody(
@@ -143,10 +158,10 @@ class DraftController {
       header('Content-Type: application/json');
       echo json_encode(['message' => 'Rascunhos salvos com sucesso.']);
     } catch (Exception $e) {
-      \ApiSite\Services\LogService::getInstance()->error('Falha ao salvar rascunhos em massa.', ['error' => $e->getMessage()]);
+      LogService::getInstance()->error('Falha ao salvar rascunhos em massa.', ['error' => $e->getMessage()]);
       http_response_code(500);
       header('Content-Type: application/json');
-      echo json_encode(['message' => 'Ocorreu um erro ao salvar os rascunhos.']);
+      echo json_encode(['message' => 'Ocorreu um erro ao salvar os rascunhos. ' . $e->getMessage()]);
     }
   }
 
@@ -162,6 +177,13 @@ class DraftController {
    * in="header",
    * required=true,
    * description="Chave de API estática para autorizar a requisição.",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
    * @OA\Schema(type="string")
    * ),
    * @OA\Parameter(
@@ -218,10 +240,10 @@ class DraftController {
       header('Content-Type: application/json');
       echo $rascunhos->toJson();
     } catch (Exception $e) {
-      \ApiSite\Services\LogService::getInstance()->error('Falha ao buscar rascunhos.', ['error' => $e->getMessage()]);
+      LogService::getInstance()->error('Falha ao buscar rascunhos.', ['error' => $e->getMessage()]);
       http_response_code(500);
       header('Content-Type: application/json');
-      echo json_encode(['message' => 'Ocorreu um erro ao buscar os rascunhos.']);
+      echo json_encode(['message' => 'Ocorreu um erro ao buscar os rascunhos. ' . $e->getMessage()]);
     }
   }
 
@@ -237,6 +259,13 @@ class DraftController {
    * in="header",
    * required=true,
    * description="Chave de API estática para autorizar a requisição.",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
    * @OA\Schema(type="string")
    * ),
    * @OA\Parameter(
@@ -295,6 +324,13 @@ class DraftController {
    * in="header",
    * required=true,
    * description="Chave de API estática para autorizar a requisição.",
+   * @OA\Schema(type="string")
+   * ),
+   * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
    * @OA\Schema(type="string")
    * ),
    * @OA\Parameter(

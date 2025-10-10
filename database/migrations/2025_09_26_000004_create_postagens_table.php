@@ -9,7 +9,6 @@ class CreatePostagensTable extends Migration {
     Capsule::schema()->create('postagens', function (Blueprint $table) {
       $table->id();
       $table->text('texto')->nullable();
-      $table->json('tags')->nullable();
       $table->json('opcoes_plataforma')->nullable();
       $table->enum('tipo', ['RASCUNHO', 'POST'])->default('POST');
       $table->enum('situacao', ['PENDENTE', 'ENVIADO', 'SUCESSO', 'ALERTA', 'EXCLUIDO'])->default('PENDENTE');

@@ -27,6 +27,13 @@ class PlatformController {
    * description="Chave de API estática para autorizar a requisição.",
    * @OA\Schema(type="string")
    * ),
+   * @OA\Parameter(
+   * name="Authorization",
+   * in="header",
+   * required=true,
+   * description="Token JWT de autenticação do usuário. (Formato: Bearer token)",
+   * @OA\Schema(type="string")
+   * ),
    * @OA\Response(
    * response=200,
    * description="Operação bem-sucedida.",
