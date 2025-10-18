@@ -9,6 +9,6 @@ class Platform extends Model {
   protected $fillable = ['nome', 'ativo'];
 
   public function blogs() {
-    return $this->hasMany(Blog::class);
+    return $this->hasMany(Blog::class, 'plataforma_id');
   }
 }

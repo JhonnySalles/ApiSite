@@ -23,6 +23,7 @@
         "doctrine/annotations": "^2.0",
         "guzzlehttp/guzzle": "^7.10",
         "monolog/monolog": "^3.9",
-        "aws/aws-sdk-php": "^3.356"
+        "aws/aws-sdk-php": "^3.356",
+        "illuminate/pagination": "^12.34"
     }
 }

@@ -22,6 +22,13 @@ class PublishService {
   }
 
   /**
+   * Helper privado para traduzir 'x' para 'twitter'.
+   */
+  private function resolvePlatformAlias(string $name): string {
+    return strtolower($name) === 'x' ? 'twitter' : $name;
+  }
+
+  /**
    * Cria uma nova postagem (do tipo 'POST') no banco de dados, incluindo suas imagens e registros de envio.
    * Orquestra toda a lógica de negócio para a criação de um Post.
    *
@@ -30,6 +37,9 @@ class PublishService {
    * @throws Exception Se ocorrer um erro durante a transação.
    */
   public function savePosts(array $payload): Post {
+    if (!empty($payload['platforms']))
+      $payload['platforms'] = array_map([$this, 'resolvePlatformAlias'], $payload['platforms']);
+
     $imageUrls = $this->imageService->processAndUploadImages($payload['images'] ?? null);
 
     DB::connection()->beginTransaction();
@@ -69,6 +79,8 @@ class PublishService {
    * @throws Exception Se ocorrer outro erro durante a transação no banco de dados.
    */
   public function savePost(string $platformName, array $payload): Post {
+    $platformName = $this->resolvePlatformAlias($platformName);
+
     $platform = Platform::where('nome', $platformName)->where('ativa', true)->first();
     if (!$platform)
       throw new InvalidArgumentException("Plataforma '$platformName' não encontrada ou está inativa.");
@@ -145,7 +157,7 @@ class PublishService {
     // Usamos with() para carregar os relacionamentos de forma otimizada (Eager Loading)
     // Isso evita o problema de N+1 queries.
     // Trazemos cada postagem com seus envios, e para cada envio, sua plataforma.
-    return Post::with(['sends.plataforma', 'images'])->where('situacao', '!=', 'EXCLUIDO')->orderBy('created_at', 'desc')->paginate($perPage = $size, $columns = ['*'], $pageName = 'page', $page = $page);
+    return Post::with(['sends.platform', 'images'])->where('situacao', '!=', 'EXCLUIDO')->orderBy('created_at', 'desc')->paginate($perPage = $size, $columns = ['*'], $pageName = 'page', $page = $page);
   }
 
 
