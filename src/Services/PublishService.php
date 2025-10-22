@@ -157,9 +157,22 @@ class PublishService {
     // Usamos with() para carregar os relacionamentos de forma otimizada (Eager Loading)
     // Isso evita o problema de N+1 queries.
     // Trazemos cada postagem com seus envios, e para cada envio, sua plataforma.
-    return Post::with(['sends.platform', 'images'])->where('situacao', '!=', 'EXCLUIDO')->orderBy('created_at', 'desc')->paginate($perPage = $size, $columns = ['*'], $pageName = 'page', $page = $page);
+    return Post::with(['sends.platform', 'images', 'tags'])->where('situacao', '!=', 'EXCLUIDO')->orderBy('created_at', 'desc')->paginate($perPage = $size, $columns = ['*'], $pageName = 'page', $page = $page);
   }
 
+  /**
+   * Realiza a exclusão lógica (soft delete) de um Post ou Rascunho pelo ID.
+   * A situação do item será alterada para 'EXCLUIDO'.
+   *
+   * @param int $id O ID do item a ser excluído.
+   * @return bool Retorna true se o item foi marcado como excluído com sucesso.
+   * @throws ModelNotFoundException Se o item não for encontrado.
+   */
+  public function deletePost(int $id): bool {
+    $post = Post::findOrFail($id);
+    $post->situacao = 'EXCLUIDO';
+    return $post->save();
+  }
 
   /**
    * Cria um único rascunho (Draft) no banco de dados.

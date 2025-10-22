@@ -6,7 +6,7 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 
 class CreateImagensPostagemTable extends Migration {
   public function up() {
-    Capsule::schema()->create('imagens_postagem', function (Blueprint $table) {
+    Capsule::schema()->create('postagem_imagens', function (Blueprint $table) {
       $table->id();
       $table->foreignId('postagem_id')->constrained('postagens')->onDelete('cascade');
       $table->string('url', 2048);
@@ -16,6 +16,6 @@ class CreateImagensPostagemTable extends Migration {
   }
 
   public function down() {
-    Capsule::schema()->dropIfExists('imagens_postagem');
+    Capsule::schema()->dropIfExists('postagem_imagens');
   }
 }
