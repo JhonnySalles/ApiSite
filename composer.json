@@ -24,6 +24,22 @@
         "guzzlehttp/guzzle": "^7.10",
         "monolog/monolog": "^3.9",
         "aws/aws-sdk-php": "^3.356",
-        "illuminate/pagination": "^12.34"
+        "illuminate/pagination": "^12.34",
+        "elephantio/elephant.io": "5.0.2"
+    },
+    "require-dev": {
+        "cweagans/composer-patches": "^1.7"
+    },
+    "config": {
+        "allow-plugins": {
+            "cweagans/composer-patches": true
+        }
+    },
+    "extra": {
+        "patches": {
+            "elephantio/elephant.io": {
+                "Adicionar metodo getSid() na classe Session": "patches/elephantio-add-getid-method.patch"
+            }
+        }
     }
 }

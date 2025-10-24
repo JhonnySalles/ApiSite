@@ -89,6 +89,7 @@ $router->mount('/api', function () use ($router) {
 
   // Endpoint de Histórico (ex: /api/history)
   $router->get('/history', 'HistoryController@history');
+  $router->delete('/history/(\d+)', 'HistoryController@delete');
 
   // Endpoint de Tags (ex: /api/tags)
   $router->get('/tags', 'TagController@tags');

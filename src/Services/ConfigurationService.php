@@ -2,7 +2,9 @@
 
 namespace ApiSite\Services;
 
+use ApiSite\Models\Blog;
 use ApiSite\Models\Platform;
+use Exception;
 use Illuminate\Database\Capsule\Manager as DB;
 use Illuminate\Database\Eloquent\Collection;
 use InvalidArgumentException;
@@ -148,4 +150,72 @@ class ConfigurationService {
     $data = $this->getPlatformByName($platform);
     return $data->blogs;
   }
+
+  /**
+   * Substitui todos os blogs de uma plataforma específica pelos novos dados fornecidos.
+   * Todos os blogs existentes para a plataforma serão excluídos antes da inserção.
+   *
+   * @param string $platformName Nome da plataforma (ex: 'tumblr').
+   * @param array $externalBlogs Array de blogs obtidos da API externa. Ex: [['name' => ..., 'title' => ...]]
+   * @return bool Retorna true se a substituição foi bem-sucedida.
+   * @throws InvalidArgumentException Se a plataforma não for encontrada localmente.
+   * @throws Exception Se ocorrer erro durante a transação no banco de dados.
+   */
+  public function saveBlogs(string $platformName, array $externalBlogs): bool {
+    $platformName = $this->resolvePlatformAlias($platformName);
+
+    $platform = Platform::where('nome', $platformName)->first();
+    if (!$platform)
+      throw new InvalidArgumentException("Plataforma '$platformName' não encontrada no banco de dados local para salvar blogs.");
+
+    $currentBlogs = $platform->blogs()->get();
+    $previouslySelectedBlogName = null;
+    foreach ($currentBlogs as $blog) {
+      if ($blog->selecionado) {
+        $previouslySelectedBlogName = $blog->nome;
+        LogService::getInstance()->info("Blog '{$previouslySelectedBlogName}' estava selecionado anteriormente para {$platformName}.");
+        break;
+      }
+    }
+
+    DB::connection()->beginTransaction();
+    try {
+      $deletedCount = $platform->blogs()->delete();
+      LogService::getInstance()->info("Removidos {$deletedCount} blogs antigos para a plataforma {$platformName}.");
+
+      $blogsToInsert = [];
+      $now = new \DateTime();
+      foreach ($externalBlogs as $extBlog) {
+        if (empty($extBlog['name']) || empty($extBlog['title']))
+          continue;
+
+        $blogsToInsert[] = ['plataforma_id' => $platform->id, 'nome' => $extBlog['name'], 'titulo' => $extBlog['title'], 'selecionado' => false, 'created_at' => $now, 'updated_at' => $now,];
+      }
+
+      if (!empty($blogsToInsert)) {
+        Blog::insert($blogsToInsert);
+        LogService::getInstance()->info("Inseridos " . count($blogsToInsert) . " novos blogs para a plataforma {$platformName}.");
+      }
+
+      if ($previouslySelectedBlogName !== null) {
+        $newlySelectedBlog = Blog::where('plataforma_id', $platform->id)->where('nome', $previouslySelectedBlogName)->first();
+
+        if ($newlySelectedBlog) {
+          $newlySelectedBlog->selecionado = true;
+          $newlySelectedBlog->save();
+          LogService::getInstance()->info("Blog '{$previouslySelectedBlogName}' foi re-selecionado para {$platformName}.");
+        } else
+          LogService::getInstance()->warning("Blog '{$previouslySelectedBlogName}' que estava selecionado não foi encontrado nos novos dados para {$platformName}. Nenhum blog ficará selecionado.");
+      } else
+        LogService::getInstance()->info("Nenhum blog estava selecionado anteriormente para {$platformName}.");
+
+      DB::connection()->commit();
+      return true;
+    } catch (Exception $dbEx) {
+      DB::connection()->rollBack();
+      LogService::getInstance()->error("Erro ao substituir blogs para {$platformName} no banco local.", ['error' => $dbEx->getMessage()]);
+      throw $dbEx;
+    }
+  }
+
 }

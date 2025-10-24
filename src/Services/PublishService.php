@@ -24,7 +24,7 @@ class PublishService {
   /**
    * Helper privado para traduzir 'x' para 'twitter'.
    */
-  private function resolvePlatformAlias(string $name): string {
+  public function resolvePlatformAlias(string $name): string {
     return strtolower($name) === 'x' ? 'twitter' : $name;
   }
 
@@ -122,27 +122,18 @@ class PublishService {
   }
 
   /**
-   * Atualiza a situação de um Postagem pelo ID.
-   *
-   * @param int $postId O ID do Postagem a ser atualizado.
-   * @param string $newSituacao A nova situação para o Postagem (ex: 'ENVIADO', 'SUCESSO', 'ALERTA').
-   * @return Post O objeto do Postagem atualizado.
-   * @throws InvalidArgumentException Se a nova situação não for válida.
-   * @throws ModelNotFoundException Se o Postagem não for encontrado.
-   * @throws Exception Se ocorrer um erro durante a atualização no banco de dados.
+   * Atualiza o registro de envio (tabela 'envios') para um post/plataforma específico.
+   * Cria o registro se ele não existir.
    */
-  public function updatePostSituation(int $postId, string $newSituacao): Post {
-    $validSituacoes = ['PENDENTE', 'ENVIADO', 'SUCESSO', 'ALERTA', 'EXCLUIDO'];
-    if (!in_array($newSituacao, $validSituacoes))
-      throw new InvalidArgumentException("Situação '$newSituacao' inválida.");
+  public function updatePostSituation(int $postId, string $platformName, bool $success, ?string $error) {
+    try {
+      $platform = Platform::where('nome', $this->resolvePlatformAlias($platformName))->firstOrFail();
 
-    $post = Post::where('id', $postId)->firstOrFail();
-    $post->situacao = $newSituacao;
-
-    if (!$post->save())
-      throw new Exception("Falha ao salvar a nova situação para o Postagem ID: $postId.");
-
-    return $post;
+      Send::updateOrCreate(['postagem_id' => $postId, 'plataforma_id' => $platform->id,], ['sucesso' => $success, 'erro' => $error,]);
+      LogService::getInstance()->info("Status local atualizado para Post {$postId}, Plataforma {$platformName}", ['success' => $success]);
+    } catch (Exception $e) {
+      LogService::getInstance()->error("Falha ao atualizar status local para Post {$postId}, Plataforma {$platformName}", ['error' => $e->getMessage()]);
+    }
   }
 
   /**
