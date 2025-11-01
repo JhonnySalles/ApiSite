@@ -54,3 +54,4 @@ ehthumbs.db
 /node_modules/
 npm-debug.log
 yarn-error.log
+storage/sync_token.json

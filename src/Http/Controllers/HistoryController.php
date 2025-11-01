@@ -111,7 +111,7 @@ class HistoryController {
           'situacao' => $post->situacao,
           'text' => $post->texto,
           'data' => $post->data_postagem,
-          'tags' => $post->tags->pluck('nome'),
+          'tags' => $post->tags->pluck('tag'),
           'images' => $post->images->map(function ($image) {
             return [
               'url' => $image->url,

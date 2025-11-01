@@ -8,14 +8,13 @@ use ApiSite\Services\ImageService;
 use ApiSite\Services\LogService;
 use ApiSite\Services\PublishService;
 use ApiSite\Services\SyncAuthService;
-use Exception;
-use ReflectionClass;
-use InvalidArgumentException;
-use GuzzleHttp\Client as HttpClient;
-use GuzzleHttp\Exception\RequestException;
 use ElephantIO\Client as ElephantIOClient;
 use ElephantIO\Engine\Packet;
 use ElephantIO\Exception\SocketException;
+use Exception;
+use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Exception\RequestException;
+use InvalidArgumentException;
 
 class PublishController {
 
@@ -137,6 +136,17 @@ class PublishController {
       $post->loadMissing(['sends.platform', 'tags', 'images']);
       $allPlatforms = $post->sends->pluck('platform.nome')->toArray();
 
+      $summaryData = [
+        'type' => 'summary',
+        'summary' => [
+          'status' => 'processing',
+          'completedAt' => null,
+          'successful' => [],
+          'failed' => [],
+          'reason' => 'in_progress'
+        ]
+      ];
+
       $summaryReceived = false;
       $socketId = null;
 
@@ -144,50 +154,19 @@ class PublishController {
       $client->connect();
       $client->of('/');
 
-
-      ////////////////////////// obtenção do id por reflexão-pega o errado
-
       if (!$client->getEngine()->connected())
         throw new Exception("Socket.IO -- Falha inesperada ao conectar.");
 
-      LogService::getInstance()->info("Tentando obter SID do Namespace via Reflection...");
-      try {
-        $engine = $client->getEngine();
+      $engine = $client->getEngine();
 
-        if (!$engine->connected())
-          throw new Exception("Engine não está conectado após initialize/of.");
+      if (!$engine->connected())
+        throw new Exception("Engine não está conectado após initialize/of.");
 
-        $reflectionEngine = new ReflectionClass($engine);
-        $sessionProperty = $reflectionEngine->getProperty('session');
-
-        if (!$sessionProperty->isInitialized($engine)) {
-          LogService::getInstance()->warning("Propriedade 'session' não inicializada imediatamente. Tentando drain...");
-          $client->drain(0.5);
-          if (!$sessionProperty->isInitialized($engine))
-            throw new Exception("Propriedade 'session' do Engine não inicializada mesmo após drain.");
-        }
-
-        $sessionObject = $sessionProperty->getValue($engine);
-
-        if ($sessionObject instanceof \ElephantIO\Engine\Session) {
-          $reflectionSession = new ReflectionClass($sessionObject);
-          $valuesProperty = $reflectionSession->getProperty('values');
-
-          if (!$valuesProperty->isInitialized($sessionObject))
-            throw new Exception("Propriedade 'values' do Session não inicializada.");
-
-          $valuesArray = $valuesProperty->getValue($sessionObject);
-
-          if (is_array($valuesArray) && isset($valuesArray['id']))
-            $socketId = $valuesArray['id'];
-        } else
-          throw new Exception("Propriedade 'session' não é um objeto Session válido.");
-
-      } catch (\ReflectionException $refEx) {
-        LogService::getInstance()->error("Erro de Reflection ao tentar obter SID", ['error' => $refEx->getMessage()]);
-      } catch (Exception $e) {
-        LogService::getInstance()->error("Erro ao tentar obter SID via Reflection", ['error' => $e->getMessage()]);
-      }////////////////// fim da funçao com problema.
+      if (method_exists($engine, 'getNamespaceSid')) {
+        $socketId = $engine->getNamespaceSid();
+        LogService::getInstance()->info("Obtido SId: " . $socketId);
+      } else
+        throw new Exception("Função getNamespaceSid não aplicado ao arquivo Version1X do elephantio/elephant.io.");
 
       if (!$socketId) {
         LogService::getInstance()->error("Falha Crítica na Conexão/Handshake: Não foi possível extrair o Socket ID (SID) via Reflection.");
@@ -220,28 +199,52 @@ class PublishController {
 
         if ($packet instanceof Packet) {
           $GLOBALS['lastActivityTime'] = time();
-          LogService::getInstance()->debug("Socket.IO drain() received packet:", ['type' => $packet->type, 'name' => $packet->name ?? 'N/A', 'data' => $packet->data ?? null]);
+          $logData = [
+            'type' => $packet->type ?? null,
+            'nsp' => $packet->nsp ?? null,
+            'event' => $packet->event ?? null,
+            'ack' => $packet->ack ?? null,
+            'has_data' => isset($packet->data)
+          ];
+          LogService::getInstance()->debug("Socket.IO drain() received packet:", $logData);
 
-          if ($packet->type === 2 && isset($packet->name)) {
-            $eventName = $packet->name;
-            $eventData = $packet->data ?? [];
+          if (($packet->type ?? null) === 2 && isset($packet->event) && isset($packet->data)) {
+            $eventName = $packet->event;
+            $eventData = $packet->data;
 
-            LogService::getInstance()->info("Socket.IO Evento Recebido:", ['name' => $eventName, 'data' => $eventData]);
+            LogService::getInstance()->info("Socket.IO Evento Recebido:", ['name' => $eventName]);
 
             if ($eventName === 'progressUpdate') {
-              if (isset($eventData['platform'])) {
+              if (is_array($eventData) && isset($eventData['platform'])) {
                 $this->updateSendStatus($post->id, $eventData);
                 $GLOBALS['processedPlatforms'][$eventData['platform']] = true;
-              }
+                $this->sendWebhookUpdate($post->id, 'progress', $eventData);
+
+                $platformName = $eventData['platform'];
+                $status = $eventData['status'] ?? 'failed';
+
+                if ($status === 'success') {
+                  if (!in_array($platformName, $summaryData['summary']['successful']))
+                    $summaryData['summary']['successful'][] = $platformName;
+                } else {
+                  if (!in_array($platformName, $summaryData['summary']['failed']))
+                    $summaryData['summary']['failed'][] = $platformName;
+                }
+              } else
+                LogService::getInstance()->warning("Dados do progressUpdate inválidos ou não são array.", ['data' => $eventData]);
             } elseif ($eventName === 'taskCompleted') {
               LogService::getInstance()->info("Socket.IO 'taskCompleted' recebido.");
-              $this->sendWebhookUpdate($post->id, 'summary', $eventData);
-              $summaryReceived = true;
+              if (is_array($eventData)) {
+                $this->sendWebhookUpdate($post->id, 'summary', $eventData);
+                $summaryData = $eventData;
+                $summaryReceived = true;
+              } else
+                LogService::getInstance()->warning("Dados do taskCompleted inválidos ou não são array.", ['data' => $eventData]);
             }
           }
         } else if ($packet !== null){
           LogService::getInstance()->debug("Socket.IO drain() did not return an event Packet.", ['return' => $packet]);
-          $GLOBALS['lastActivityTime'] = time(); // Conta como atividade
+          $GLOBALS['lastActivityTime'] = time();
         } else
           LogService::getInstance()->debug("Socket.IO drain() returned null.");
 
@@ -267,7 +270,7 @@ class PublishController {
             $successfulPlatforms = $successSends->pluck('platform.nome')->toArray();
             $failedPlatforms = array_diff($allPlatforms, $successfulPlatforms);
           }
-          $manualSummaryData = [
+          $summaryData = [
             'type' => 'summary',
             'summary' => [
               'status' => 'completed_with_timeout',
@@ -277,7 +280,7 @@ class PublishController {
               'reason' => 'timeout'
             ]
           ];
-          $this->sendWebhookUpdate($post->id, 'summary', $manualSummaryData);
+          $this->sendWebhookUpdate($post->id, 'summary', $summaryData);
           break;
         }
 
@@ -287,15 +290,10 @@ class PublishController {
       if (!$summaryReceived && !$processingError && !$client->getEngine()->connected()) {
         LogService::getInstance()->warning("Loop encerrado com conexão perdida antes do sumário.");
         $processingError = new Exception("WebSocket connection lost unexpectedly before completion.");
-        $manualSummaryData = [
-          'type' => 'summary',
-          'summary' => [
-            'status' => 'completed_with_timeout',
-            'completedAt' => (new \DateTime('now', new \DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.v\Z'),
-            'reason' => 'timeout'
-          ]
-        ];
-        $this->sendWebhookUpdate($post->id, 'summary', $manualSummaryData);
+        $summaryData['summary']['status'] = 'completed_with_error';
+        $summaryData['summary']['completedAt'] = (new \DateTime('now', new \DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.v\Z');
+        $summaryData['summary']['reason'] = 'connection_lost';
+        $this->sendWebhookUpdate($post->id, 'summary', $summaryData);
       }
 
       LogService::getInstance()->info("Socket.IO event loop finished.");
@@ -305,7 +303,7 @@ class PublishController {
         throw $processingError;
 
       http_response_code(202);
-      echo json_encode(['message' => 'Envio processado. Verifique o webhook para detalhes.', 'post_id' => $post->id]);
+      echo json_encode(['message' => 'Post processado com sucesso.', 'post_id' => $post->id, 'summary' => $summaryData['summary']]);
 
     } catch (SocketException $connectEx) {
       LogService::getInstance()->error('Erro fatal de Socket.IO (conexão/leitura).', [
@@ -558,7 +556,7 @@ class PublishController {
   }
 
   /**
-   * Envia uma atualização de status para o webhook configurado no frontend.
+   * Envia uma atualização de status para o webhook configurado no frontend, incluindo uma assinatura HMAC-SHA256 para segurança.
    *
    * @param int $postId ID da postagem local.
    * @param string $type Tipo de atualização ('progress' ou 'summary').
@@ -574,10 +572,10 @@ class PublishController {
     }
 
     $payload = [];
-    $headers = ['Content-Type' => 'application/json', 'X-Webhook-Secret' => $webhookSecret];
 
     if ($type === 'progress' && isset($data['platform']))
-      $payload = ['type' => 'progress', 'postId' => $postId, 'platform' => $data['platform'], 'status' => ($data['status'] === 'success') ? 'success' : 'failed', 'error' => $data['error'] ?? null,]; elseif ($type === 'summary' && isset($data['summary']))
+      $payload = ['type' => 'progress', 'postId' => $postId, 'platform' => $data['platform'], 'status' => ($data['status'] === 'success') ? 'success' : 'failed', 'error' => $data['error'] ?? null,];
+    elseif ($type === 'summary' && isset($data['summary']))
       $payload = ['type' => 'summary', 'postId' => $postId, 'status' => 'completed', 'summary' => $data['summary'],];
     else {
       LogService::getInstance()->warning('Tipo de webhook desconhecido ou dados inválidos recebidos.', ['type' => $type, 'data' => $data]);
@@ -585,7 +583,24 @@ class PublishController {
     }
 
     try {
-      LogService::getInstance()->info("Enviando webhook '{$type}' para {$webhookUrl}", ['post_id' => $postId]);
+      $rawPayload = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+      if ($rawPayload === false)
+        throw new Exception('Falha ao codificar payload para JSON: ' . json_last_error_msg());
+
+      $calculatedSignature = hash_hmac('sha256', $rawPayload, $webhookSecret);
+      $signatureHeader = 'sha256=' . $calculatedSignature;
+    } catch (Exception $e) {
+      LogService::getInstance()->error("Erro ao gerar assinatura do webhook para Post {$postId}", ['error' => $e->getMessage()]);
+      return;
+    }
+
+    $headers = [
+      'Content-Type' => 'application/json',
+      'X-Webhook-Signature' => $signatureHeader
+    ];
+
+    try {
+      LogService::getInstance()->info("Enviando webhook '{$type}' para {$webhookUrl}", ['post_id' => $postId, 'type' => $type, 'json' => $payload]);
       $this->httpClient->post($webhookUrl, ['headers' => $headers, 'json' => $payload]);
       LogService::getInstance()->info("Webhook '{$type}' enviado com sucesso.", ['post_id' => $postId]);
 

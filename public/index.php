@@ -1,5 +1,18 @@
 <?php
 
+$allowedOrigin = $_ENV['FRONTEND_URL'] ?? '*';
+
+header("Access-Control-Allow-Origin: $allowedOrigin");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-API-KEY");
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Max-Age: 86400");
+
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+  http_response_code(204);
+  exit(0);
+}
+
 require __DIR__ . '/../bootstrap/app.php';
 
 use Bramus\Router\Router;
@@ -7,15 +20,6 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 $router = new Router();
-
-$router->options('/.*', function () {
-  header('Access-Control-Allow-Origin: *');
-  header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-  header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-KEY');
-  header('Access-Control-Max-Age: 86400');
-  exit(0);
-});
-
 $router->setNamespace('\ApiSite\Http\Controllers');
 
 // --- ROTAS DE DOCUMENTAÇÃO ---

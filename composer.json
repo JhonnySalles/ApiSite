@@ -36,9 +36,14 @@
         }
     },
     "extra": {
+        "composer-patches": {
+            "package-depths": {
+                "elephantio/elephant.io": 0
+            }
+        },
         "patches": {
             "elephantio/elephant.io": {
-                "Adicionar metodo getSid() na classe Session": "patches/elephantio-add-getid-method.patch"
+                "Armazenar e expor SID do Namespace no Engine Version1X": "patches/elephantio-store-namespacesid.patch"
             }
         }
     }
