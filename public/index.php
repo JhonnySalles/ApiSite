@@ -26,6 +26,7 @@ $router->setNamespace('\ApiSite\Http\Controllers');
 $router->get('/docs', 'DocsController@ui');
 $router->get('/docs/api-spec', 'DocsController@json');
 $router->get('/health', 'HealthController@check');
+$router->get('/test-sentry', 'HealthController@testSentryError');
 
 $router->get('/swagger-ui.html|/api-docs|/documentacao', function () {
   http_response_code(302);

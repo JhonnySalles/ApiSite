@@ -6,6 +6,7 @@ use ApiSite\Services\PublishService;
 use ApiSite\Services\LogService;
 
 use Exception;
+use function Sentry\captureException;
 
 class HistoryController {
   private $publishService;
@@ -147,7 +148,7 @@ class HistoryController {
 
     } catch (\Exception $e) {
       LogService::getInstance()->error('Falha ao buscar histórico.', ['error' => $e->getMessage()]);
-
+      captureException($e);
       http_response_code(500);
       echo json_encode(['message' => 'Ocorreu um erro ao buscar o histórico de postagens. ' . $e->getMessage()]);
     }
@@ -209,6 +210,7 @@ class HistoryController {
 
     } catch (Exception $e) {
       LogService::getInstance()->error("Falha ao excluir registro do histórico #{$id}.", ['error' => $e->getMessage()]);
+      captureException($e);
       http_response_code(500);
       header('Content-Type: application/json');
       echo json_encode(['message' => 'Ocorreu um erro ao excluir o registro.']);

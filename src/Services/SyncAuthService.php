@@ -7,6 +7,7 @@ use DateTimeZone;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
+use function Sentry\captureException;
 
 class SyncAuthService {
   private $httpClient;
@@ -137,8 +138,10 @@ class SyncAuthService {
       }
     } catch (RequestException $e) {
       LogService::getInstance()->error('Erro de rede no refresh token do Syncronizer API', ['error' => $e->getMessage()]);
+      captureException($e);
     } catch (Exception $e) {
       LogService::getInstance()->error('Erro inesperado no refresh token do Syncronizer API', ['error' => $e->getMessage()]);
+      captureException($e);
     }
     return null;
   }

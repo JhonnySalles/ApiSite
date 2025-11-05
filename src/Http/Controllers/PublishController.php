@@ -15,6 +15,7 @@ use Exception;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Exception\RequestException;
 use InvalidArgumentException;
+use function Sentry\captureException;
 
 class PublishController {
 
@@ -171,6 +172,7 @@ class PublishController {
       if (!$socketId) {
         LogService::getInstance()->error("Falha Crítica na Conexão/Handshake: Não foi possível extrair o Socket ID (SID) via Reflection.");
         try { $client->disconnect(); } catch (Exception $ignore) {}
+        captureException(new Exception("Falha na conexão inicial do WebSocket: SID não encontrado."));
         throw new Exception("Falha na conexão inicial do WebSocket: SID não encontrado.");
       }
 
@@ -189,10 +191,12 @@ class PublishController {
           $packet = $client->drain(1);
         } catch (SocketException $sockEx) {
           LogService::getInstance()->error("Erro de Socket durante drain(): " . $sockEx->getMessage());
+          captureException($sockEx);
           $processingError = $sockEx;
           break;
         } catch (Exception $e) {
           LogService::getInstance()->error("Erro durante drain(): " . $e->getMessage());
+          captureException($e);
           $processingError = $e;
           break;
         }
@@ -313,6 +317,7 @@ class PublishController {
         'error_line' => $connectEx->getLine(),
         // 'trace' => $connectEx->getTraceAsString() // Opcional: Trace completo (pode ser muito grande)
       ]);
+      captureException($connectEx);
       http_response_code(500);
       echo json_encode(['message' => 'Falha na comunicação com o serviço de publicação.', 'details' => $connectEx->getMessage()]);
     } catch (Exception $e) {
@@ -324,6 +329,7 @@ class PublishController {
         // 'trace' => $e->getTraceAsString() // Opcional: Trace completo (pode ser muito grande)
       ]);
       if (isset($client)) { try { $client->disconnect(); } catch (Exception $ignore) {} }
+      captureException($e);
       http_response_code(500);
       echo json_encode(['message' => 'Ocorreu um erro ao processar o envio da postagem.', 'details' => $e->getMessage()]);
     } finally {
@@ -411,10 +417,12 @@ class PublishController {
     } catch (InvalidArgumentException $e) {
       http_response_code(400);
       LogService::getInstance()->warning("Erro de validação ao postar em {$platform}", ['post_id' => $post->id ?? null, 'error' => $e->getMessage()]);
+      captureException($e);
       echo json_encode(['message' => $e->getMessage()]);
 
     } catch (Exception $e) {
       LogService::getInstance()->error("Falha geral ao postar em {$platform}.", ['post_id' => $post->id ?? null, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+      captureException($e);
       http_response_code(500);
       echo json_encode(['message' => 'Ocorreu um erro interno ao processar a postagem. ' . $e->getMessage()]);
     }
@@ -489,6 +497,7 @@ class PublishController {
       $errorMsg = "Erro interno: " . $e->getMessage();
       $body = ['error' => $errorMsg];
       LogService::getInstance()->error("Erro interno no envio individual para Post {$post->id}, Plataforma {$platformName}", ['error' => $errorMsg]);
+      captureException($e);
     }
 
     $this->publishService->updatePostSituation($post->id, $platformName, $success, $errorMsg);
@@ -511,6 +520,7 @@ class PublishController {
       $preparedImagesForSyncApi = $imageService->prepareImagesForUpload($originalPayload['images'] ?? null);
     } catch (Exception $e) {
       LogService::getInstance()->error('Erro ao preparar imagens para API Syncronizer', ['error' => $e->getMessage(), 'post_id' => $post->id]);
+      captureException($e);
       throw new Exception("Falha ao preparar imagens: " . $e->getMessage());
     }
 
@@ -526,6 +536,7 @@ class PublishController {
     } catch (RequestException $e) {
       $errorBody = $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : $e->getMessage();
       LogService::getInstance()->error('Erro ao enviar POST para Syncronizer /publish-all/post', ['error' => $errorBody]);
+      captureException($e);
       throw new Exception("Falha ao comunicar com a API de publicação: " . $errorBody);
     }
   }
@@ -552,6 +563,7 @@ class PublishController {
         LogService::getInstance()->warning("Registro de envio não encontrado para Post {$postId}, Plataforma {$progressData['platform']}");
     } catch (Exception $e) {
       LogService::getInstance()->error("Erro ao atualizar status do envio via WebSocket", ['post_id' => $postId, 'platform' => $progressData['platform'] ?? 'N/A', 'error' => $e->getMessage()]);
+      captureException($e);
     }
   }
 
@@ -591,6 +603,7 @@ class PublishController {
       $signatureHeader = 'sha256=' . $calculatedSignature;
     } catch (Exception $e) {
       LogService::getInstance()->error("Erro ao gerar assinatura do webhook para Post {$postId}", ['error' => $e->getMessage()]);
+      captureException($e);
       return;
     }
 
@@ -607,8 +620,10 @@ class PublishController {
     } catch (RequestException $e) {
       $errorBody = $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : $e->getMessage();
       LogService::getInstance()->error("Falha ao enviar webhook '{$type}' para {$webhookUrl}", ['post_id' => $postId, 'error' => $errorBody, 'status_code' => $e->hasResponse() ? $e->getResponse()->getStatusCode() : null]);
+      captureException($e);
     } catch (Exception $e) {
       LogService::getInstance()->error("Erro inesperado ao enviar webhook '{$type}'", ['post_id' => $postId, 'error' => $e->getMessage()]);
+      captureException($e);
     }
   }
 

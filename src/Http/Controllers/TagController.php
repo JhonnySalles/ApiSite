@@ -4,6 +4,7 @@ namespace ApiSite\Http\Controllers;
 
 use ApiSite\Services\LogService;
 use ApiSite\Services\PublishService;
+use function Sentry\captureException;
 
 class TagController {
   private $publishService;
@@ -58,6 +59,7 @@ class TagController {
 
     } catch (\Exception $e) {
       LogService::getInstance()->error('Falha ao buscar tags.', ['error' => $e->getMessage()]);
+      captureException($e);
       http_response_code(500);
       echo json_encode(['message' => 'Ocorreu um erro ao buscar as tags. ' . $e->getMessage()]);
     }

@@ -6,6 +6,7 @@ use ApiSite\Services\LogService;
 use ApiSite\Services\PublishService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
+use function Sentry\captureException;
 
 class DraftController {
   private $publishService;
@@ -88,6 +89,7 @@ class DraftController {
       echo $draft->toJson();
     } catch (Exception $e) {
       LogService::getInstance()->error('Falha ao salvar rascunho.', ['error' => $e->getMessage()]);
+      captureException($e);
       http_response_code(500);
       header('Content-Type: application/json');
       echo json_encode(['message' => 'Ocorreu um erro ao salvar o rascunho. ' . $e->getMessage()]);
@@ -159,6 +161,7 @@ class DraftController {
       echo json_encode(['message' => 'Rascunhos salvos com sucesso.']);
     } catch (Exception $e) {
       LogService::getInstance()->error('Falha ao salvar rascunhos em massa.', ['error' => $e->getMessage()]);
+      captureException($e);
       http_response_code(500);
       header('Content-Type: application/json');
       echo json_encode(['message' => 'Ocorreu um erro ao salvar os rascunhos. ' . $e->getMessage()]);
@@ -241,6 +244,7 @@ class DraftController {
       echo $rascunhos->toJson();
     } catch (Exception $e) {
       LogService::getInstance()->error('Falha ao buscar rascunhos.', ['error' => $e->getMessage()]);
+      captureException($e);
       http_response_code(500);
       header('Content-Type: application/json');
       echo json_encode(['message' => 'Ocorreu um erro ao buscar os rascunhos. ' . $e->getMessage()]);

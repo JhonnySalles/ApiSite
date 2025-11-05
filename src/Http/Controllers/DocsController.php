@@ -3,6 +3,7 @@
 namespace ApiSite\Http\Controllers;
 
 use OpenApi\Generator;
+use function Sentry\captureException;
 
 /**
  * @OA\Info(
@@ -26,6 +27,7 @@ class DocsController {
       header('Content-Type: application/json');
       echo $openapi->toJson();
     } catch (\Exception $e) {
+      captureException($e);
       http_response_code(500);
       echo json_encode(['message' => 'Erro ao gerar a documentação OpenAPI.', 'error' => $e->getMessage()]);
     }

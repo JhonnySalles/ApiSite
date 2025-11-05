@@ -6,6 +6,7 @@ use ApiSite\Services\ConfigurationService;
 use ApiSite\Services\LogService;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
+use function Sentry\captureException;
 
 class ConfigurationController {
   private $configService;
@@ -163,6 +164,7 @@ class ConfigurationController {
       header('Content-Type: application/json');
       echo json_encode($formatted);
     } catch (InvalidArgumentException $e) {
+      captureException($e);
       http_response_code(404);
       echo json_encode(['message' => $e->getMessage()]);
     }
@@ -254,6 +256,7 @@ class ConfigurationController {
       echo json_encode(['message' => 'Plataformas atualizadas com sucesso.']);
     } catch (\Exception $e) {
       LogService::getInstance()->error('Falha na atualização em massa de plataformas.', ['error' => $e->getMessage()]);
+      captureException($e);
       http_response_code(500);
       echo json_encode(['message' => 'Ocorreu um erro ao atualizar as plataformas: ' . $e->getMessage()]);
     }
@@ -345,10 +348,12 @@ class ConfigurationController {
       header('Content-Type: application/json');
       echo json_encode($formatted);
     } catch (InvalidArgumentException $e) {
+      captureException($e);
       http_response_code(400);
       echo json_encode(['message' => $e->getMessage()]);
     } catch (\Exception $e) {
       LogService::getInstance()->error("Falha ao atualizar a plataforma '$name'.", ['error' => $e->getMessage()]);
+      captureException($e);
       http_response_code(500);
       echo json_encode(['message' => "Ocorreu um erro ao atualizar a plataforma '$name'."]);
     }

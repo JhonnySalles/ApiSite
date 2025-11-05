@@ -25,7 +25,8 @@
         "monolog/monolog": "^3.9",
         "aws/aws-sdk-php": "^3.356",
         "illuminate/pagination": "^12.34",
-        "elephantio/elephant.io": "5.0.2"
+        "elephantio/elephant.io": "5.0.2",
+        "sentry/sentry": "^4.17"
     },
     "require-dev": {
         "cweagans/composer-patches": "^1.7"

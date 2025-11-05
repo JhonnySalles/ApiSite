@@ -6,6 +6,7 @@ use ApiSite\Services\ConfigurationService;
 use ApiSite\Services\LogService;
 use Exception;
 use InvalidArgumentException;
+use function Sentry\captureException;
 
 class PlatformController {
   private $configService;
@@ -63,6 +64,7 @@ class PlatformController {
       }
     } catch (Exception $fetchEx) {
       LogService::getInstance()->warning('Não foi possível buscar blogs da API externa. Retornando dados locais.', ['reason' => $fetchEx->getMessage()]);
+      captureException($e);
     }
 
     try {
@@ -71,10 +73,12 @@ class PlatformController {
       echo $blogs->toJson();
     } catch (InvalidArgumentException $e) {
       LogService::getInstance()->error('Falha ao buscar blogs.', ['error' => $e->getMessage()]);
+      captureException($e);
       http_response_code(404);
       echo json_encode(['message' => $e->getMessage()]);
     } catch (Exception $e) {
       LogService::getInstance()->error('Falha ao buscar blogs.', ['error' => $e->getMessage()]);
+      captureException($e);
       http_response_code(500);
       echo json_encode(['message' => 'Falha ao buscar blogs.']);
     }
@@ -108,9 +112,11 @@ class PlatformController {
     } catch (RequestException $e) {
       $errorBody = $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : $e->getMessage();
       LogService::getInstance()->error('Erro de comunicação ao buscar blogs do Tumblr na API externa', ['error' => $errorBody]);
+      captureException($e);
       throw new Exception("Falha de comunicação ao buscar blogs do Tumblr: " . $errorBody);
     } catch (Exception $e) {
       LogService::getInstance()->error('Erro inesperado ao tentar buscar blogs externos do Tumblr', ['error' => $e->getMessage()]);
+      captureException($e);
       throw $e;
     }
   }
