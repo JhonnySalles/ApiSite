@@ -30,7 +30,7 @@ class AuthController {
    * description="Credenciais do usuário para login.",
    * @OA\JsonContent(
    * required={"username", "password"},
-   * @OA\Property(property="usuario", type="string", format="text", example="admin"),
+   * @OA\Property(property="username", type="string", format="text", example="user123"),
    * @OA\Property(property="password", type="string", format="password", example="password123")
    * )
    * ),

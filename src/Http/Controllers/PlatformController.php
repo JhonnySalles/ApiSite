@@ -4,15 +4,21 @@ namespace ApiSite\Http\Controllers;
 
 use ApiSite\Services\ConfigurationService;
 use ApiSite\Services\LogService;
+use ApiSite\Services\SyncAuthService;
 use Exception;
+use GuzzleHttp\Client as HttpClient;
 use InvalidArgumentException;
 use function Sentry\captureException;
 
 class PlatformController {
   private $configService;
+  private $syncAuthService;
+  private $httpClient;
 
   public function __construct() {
     $this->configService = new ConfigurationService();
+    $this->syncAuthService = new SyncAuthService();
+    $this->httpClient = new HttpClient(['timeout' => 15.0]);
   }
 
   // GET /api/platforms/tumblr/blogs

@@ -100,7 +100,7 @@ $router->mount('/api', function () use ($router) {
   $router->get('/tags', 'TagController@tags');
 
   // Endpoint de Plataforma (ex: /api/platforms/tumblr/blogs)
-  $router->get('/platforms/tumblr/blogs', 'PlatformController@getTumblrBlogs');
+  $router->get('/platform/tumblr/blogs', 'PlatformController@getTumblrBlogs');
 
   // Endpoints de Configuração (ex: /api/configuration/platforms)
   $router->mount('/configuration', function () use ($router) {
