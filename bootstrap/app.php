@@ -17,6 +17,7 @@ if ($sentryDsn && $sentryDsn !== '') {
     'dsn' => $sentryDsn,
     'environment' => $sentryEnv,
     'traces_sample_rate' => 1.0,
+    'release' => 'apisite@1.0.0'
   ]);
 }
 
