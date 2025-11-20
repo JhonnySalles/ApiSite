@@ -37,6 +37,8 @@ class DocsController {
    * Serve a página HTML do Swagger UI.
    */
   public function ui() {
+    $basePath = $_ENV['API_BASE_PATH'] ?? '';
+    $specUrl = $basePath . '/docs/api-spec';
     echo <<<HTML
         <!DOCTYPE html>
         <html lang="en">
@@ -54,7 +56,7 @@ class DocsController {
         <script>
           window.onload = () => {
             window.ui = SwaggerUIBundle({
-              url: '/docs/api-spec',
+              url: '$specUrl',
               dom_id: '#swagger-ui',
             });
           };

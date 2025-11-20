@@ -20,6 +20,8 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 $router = new Router();
+$basePath = $_ENV['API_BASE_PATH'] ?? '';
+$router->setBasePath($basePath);
 $router->setNamespace('\ApiSite\Http\Controllers');
 
 // --- ROTAS DE DOCUMENTAÇÃO ---

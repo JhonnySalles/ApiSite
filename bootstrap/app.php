@@ -7,7 +7,7 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 use Dotenv\Dotenv;
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
-$dotenv->load();
+$dotenv->safeLoad();
 
 $sentryEnv = $_ENV['SENTRY_ENVIRONMENT'] ?? 'development';
 $sentryDsn = $_ENV['SENTRY_DSN'] ?? null;
