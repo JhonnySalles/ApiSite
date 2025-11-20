@@ -1,36 +1,62 @@
 <?php
 
-require __DIR__ . '/bootstrap/app.php';
+$capsule = require __DIR__ . '/bootstrap/app.php';
+
+use Illuminate\Database\Schema\Blueprint;
+
+$schema = $capsule->getConnection()->getSchemaBuilder();
+$seederTableName = 'seeders';
+
+if (!$schema->hasTable($seederTableName)) {
+  $schema->create($seederTableName, function (Blueprint $table) {
+    $table->increments('id');
+    $table->string('seeder');
+    $table->integer('batch');
+  });
+  echo "Tabela 'seeders' de controle criada com sucesso.\n";
+}
+
+$executedSeeders = $capsule->table($seederTableName)->pluck('seeder')->all();
 
 $seederPath = __DIR__ . '/database/seeders';
 $allSeederFiles = scandir($seederPath);
-
 $seederFiles = preg_grep('/\.php$/', $allSeederFiles);
 
 if (empty($seederFiles)) {
-  echo "Nenhum seeder encontrado.\n";
+  echo "Nenhum arquivo seeder encontrado.\n";
   exit;
 }
 
-echo "Executando seeders...\n";
+$pendingSeeders = array_diff(
+  array_map(fn($file) => pathinfo($file, PATHINFO_FILENAME), $seederFiles),
+  $executedSeeders
+);
 
-sort($seederFiles);
+if (empty($pendingSeeders)) {
+  echo "Nenhum seeder novo para executar.\n";
+  exit;
+}
 
-foreach ($seederFiles as $fileName) {
-  $filePath = $seederPath . '/' . $fileName;
+$lastBatch = $capsule->table($seederTableName)->max('batch') ?? 0;
+$currentBatch = $lastBatch + 1;
+
+echo "Executando seeders pendentes...\n";
+sort($pendingSeeders);
+
+foreach ($pendingSeeders as $seederName) {
+  $filePath = $seederPath . '/' . $seederName . '.php';
 
   if (file_exists($filePath)) {
     require_once $filePath;
 
-    $className = pathinfo($fileName, PATHINFO_FILENAME);
-    $className = substr($className, 18);
-    $className = str_replace(' ', '', ucwords(str_replace('_', ' ', $className)));
+    $className = str_replace(' ', '', ucwords(str_replace('_', ' ', substr($seederName, 18))));
 
     if (class_exists($className)) {
-      echo "  - Executando seeder: $className\n";
       (new $className())->run();
+      $capsule->table($seederTableName)->insert(['seeder' => $seederName, 'batch' => $currentBatch]);
+      echo "  - Seeded: $seederName\n";
     } else
-      echo "  - Aviso: A classe '$className' não foi encontrada no arquivo '$fileName'.\n";
+      echo "  - AVISO: Classe '$className' não encontrada no arquivo '$seederName.php'. Verifique a nomeação.\n";
   }
 }
 

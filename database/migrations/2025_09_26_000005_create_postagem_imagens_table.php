@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Capsule\Manager as Capsule;
 
-class CreateImagensPostagemTable extends Migration {
+class CreatePostagemImagensTable extends Migration {
   public function up() {
     Capsule::schema()->create('postagem_imagens', function (Blueprint $table) {
       $table->id();

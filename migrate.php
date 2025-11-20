@@ -51,10 +51,10 @@ foreach ($pendingMigrations as $migrationName) {
 
     if (class_exists($className)) {
       (new $className())->up();
-
       $capsule->table($migrationTableName)->insert(['migration' => $migrationName, 'batch' => $currentBatch]);
       echo "  - Migrated: $migrationName\n";
-    }
+    } else
+      echo "  - AVISO: Arquivo '$migrationName.php' encontrado, mas a classe '$className' não existe nele. Verifique o nome da classe.\n";
   }
 }
 
