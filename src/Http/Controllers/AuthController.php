@@ -14,7 +14,7 @@ class AuthController {
   // POST /login
   /**
    * @OA\Post(
-   * path="/login",
+   * path="/auth/login",
    * tags={"Autenticação"},
    * summary="Autentica um usuário e retorna um token JWT.",
    * description="Este endpoint valida as credenciais (usuário e senha) e, em caso de sucesso, retorna um token de acesso (JWT) com validade de 24 horas, um token de atualização e os dados básicos do usuário. A requisição deve ser autenticada com uma chave de API estática no cabeçalho.",
@@ -122,7 +122,7 @@ class AuthController {
 
   /**
    * @OA\Post(
-   * path="/refresh",
+   * path="/auth/refresh",
    * tags={"Autenticação"},
    * summary="Renova um token de acesso expirado.",
    * description="Recebe um refresh_token válido e retorna um novo par de access_token e refresh_token.",
