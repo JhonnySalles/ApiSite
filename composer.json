@@ -8,6 +8,11 @@
             "ApiSite\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
     "authors": [
         {
             "name": "jhonny"
@@ -29,7 +34,9 @@
         "sentry/sentry": "^4.17"
     },
     "require-dev": {
-        "cweagans/composer-patches": "^1.7"
+        "cweagans/composer-patches": "^1.7",
+        "phpunit/phpunit": "^11.5",
+        "mockery/mockery": "^1.6"
     },
     "config": {
         "allow-plugins": {

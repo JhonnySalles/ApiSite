@@ -124,4 +124,16 @@ $router->mount('/api', function () use ($router) {
   });
 });
 
-$router->run();
+try {
+  $router->run();
+} catch (\Exception $e) {
+  if (function_exists('\Sentry\captureException')) {
+    \Sentry\captureException($e);
+  }
+  http_response_code(500);
+  header('Content-Type: application/json');
+  echo json_encode([
+    'message' => 'Ocorreu um erro interno no servidor.',
+    'error' => $e->getMessage()
+  ]);
+}

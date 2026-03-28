@@ -25,10 +25,14 @@ class PublishController {
   private $syncAuthService;
   private $httpClient;
 
-  public function __construct() {
-    $this->publishService = new PublishService();
-    $this->syncAuthService = new SyncAuthService();
-    $this->httpClient = new HttpClient(['timeout' => 15.0]);
+  public function __construct(
+    ?PublishService $publishService = null, 
+    ?SyncAuthService $syncAuthService = null, 
+    ?HttpClient $httpClient = null
+  ) {
+    $this->publishService = $publishService ?? new PublishService();
+    $this->syncAuthService = $syncAuthService ?? new SyncAuthService();
+    $this->httpClient = $httpClient ?? new HttpClient(['timeout' => 15.0]);
   }
 
 
@@ -114,7 +118,7 @@ class PublishController {
       $post = $this->publishService->savePosts($payload);
       LogService::getInstance()->info("Post {$post->id} salvo. Iniciando o envio.");
 
-      if (filter_var($_ENV['IGNORAR_POST'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+      if ($_ENV['APP_ENV'] !== 'testing' && filter_var($_ENV['IGNORAR_POST'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
         $this->simulateExternalPost($post);
         http_response_code(202);
         echo json_encode(['message' => 'Postagem salva (envio simulado).', 'post_id' => $post->id]);
@@ -412,7 +416,11 @@ class PublishController {
 
       http_response_code($result['statusCode']);
       header('Content-Type: application/json');
-      echo json_encode($result['body']);
+      $responseBody = array_merge(
+        is_array($result['body']) ? $result['body'] : ['external_response' => $result['body']],
+        ['post_id' => $post->id]
+      );
+      echo json_encode($responseBody);
 
     } catch (InvalidArgumentException $e) {
       http_response_code(400);
@@ -443,7 +451,7 @@ class PublishController {
   private function sendToPublishApiPlatform(Post $post, string $platformName, ?array $platformOptions): array {
     $platformName = $this->publishService->resolvePlatformAlias($platformName);
 
-    if (filter_var($_ENV['IGNORAR_POST'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+    if ($_ENV['APP_ENV'] !== 'testing' && filter_var($_ENV['IGNORAR_POST'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
       LogService::getInstance()->info("Simulando envio individual para Post {$post->id}, Plataforma {$platformName}");
       sleep(rand(1, 2));
       $fails = (rand(1, 100) <= 15);

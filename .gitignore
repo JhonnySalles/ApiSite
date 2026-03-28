@@ -56,3 +56,4 @@ npm-debug.log
 yarn-error.log
 storage/sync_token.json
 .env.prod
+.env.testing

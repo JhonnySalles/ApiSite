@@ -17,8 +17,8 @@ class PublishService {
 
   private $imageService;
 
-  public function __construct() {
-    $this->imageService = new ImageService();
+  public function __construct(?ImageService $imageService = null) {
+    $this->imageService = $imageService ?? new ImageService();
   }
 
   /**
@@ -81,7 +81,7 @@ class PublishService {
   public function savePost(string $platformName, array $payload): Post {
     $platformName = $this->resolvePlatformAlias($platformName);
 
-    $platform = Platform::where('nome', $platformName)->where('ativa', true)->first();
+    $platform = Platform::where('nome', $platformName)->where('ativo', true)->first();
     if (!$platform)
       throw new InvalidArgumentException("Plataforma '$platformName' não encontrada ou está inativa.");
 

@@ -24,7 +24,7 @@ $seederFiles = preg_grep('/\.php$/', $allSeederFiles);
 
 if (empty($seederFiles)) {
   echo "Nenhum arquivo seeder encontrado.\n";
-  exit;
+  return;
 }
 
 $pendingSeeders = array_diff(
@@ -34,7 +34,7 @@ $pendingSeeders = array_diff(
 
 if (empty($pendingSeeders)) {
   echo "Nenhum seeder novo para executar.\n";
-  exit;
+  return;
 }
 
 $lastBatch = $capsule->table($seederTableName)->max('batch') ?? 0;

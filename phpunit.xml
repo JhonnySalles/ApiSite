@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnTestsThatTriggerNotices="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         failOnWarning="true"
+         failOnNotice="true"
+         failOnDeprecation="false">
+    <extensions>
+        <bootstrap class="Tests\Extensions\CustomOutputExtension" />
+    </extensions>
+    <testsuites>
+        <testsuite name="Services">
+            <directory>tests/Unit/Services</directory>
+        </testsuite>
+        <testsuite name="Controllers">
+            <directory>tests/Integration/Controllers</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <!-- PHPUnit will look for .env.testing if we handle it in bootstrap -->
+    </php>
+</phpunit>

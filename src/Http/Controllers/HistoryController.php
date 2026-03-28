@@ -5,6 +5,7 @@ namespace ApiSite\Http\Controllers;
 use ApiSite\Services\PublishService;
 use ApiSite\Services\LogService;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
 use function Sentry\captureException;
 

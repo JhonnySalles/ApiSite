@@ -13,10 +13,23 @@ class ImageService {
   private $url;
   private $httpClient;
 
-  public function __construct() {
-    $this->url = $_ENV['SUPABASE_URL'];
-    $this->supabase = new S3Client(['version' => 'latest', 'region' => $_ENV['SUPABASE_S3_REGION'], 'endpoint' => $_ENV['SUPABASE_S3_ENDPOINT'], 'use_path_style_endpoint' => true, 'credentials' => ['key' => $_ENV['SUPABASE_S3_ACCESS_KEY_ID'], 'secret' => $_ENV['SUPABASE_S3_SECRET_ACCESS_KEY'],],]);
-    $this->httpClient = new HttpClient(['timeout' => 10.0]);
+  public function __construct(?S3Client $s3Client = null, ?HttpClient $httpClient = null) {
+    $this->url = $_ENV['SUPABASE_URL'] ?? '';
+    if ($s3Client) {
+      $this->supabase = $s3Client;
+    } else {
+      $this->supabase = new S3Client([
+        'version' => 'latest', 
+        'region' => $_ENV['SUPABASE_S3_REGION'] ?? 'us-east-1', 
+        'endpoint' => $_ENV['SUPABASE_S3_ENDPOINT'] ?? null, 
+        'use_path_style_endpoint' => true, 
+        'credentials' => [
+          'key' => $_ENV['SUPABASE_S3_ACCESS_KEY_ID'] ?? '', 
+          'secret' => $_ENV['SUPABASE_S3_SECRET_ACCESS_KEY'] ?? '',
+        ],
+      ]);
+    }
+    $this->httpClient = $httpClient ?? new HttpClient(['timeout' => 10.0]);
   }
 
   /**

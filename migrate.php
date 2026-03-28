@@ -25,14 +25,14 @@ $migrationFiles = preg_grep('/\.php$/', $allMigrationFiles);
 
 if (empty($migrationFiles)) {
   echo "Nenhuma migration encontrada.\n";
-  exit;
+  return;
 }
 
 $pendingMigrations = array_diff(array_map(fn($file) => pathinfo($file, PATHINFO_FILENAME), $migrationFiles), $executedMigrations);
 
 if (empty($pendingMigrations)) {
   echo "Nenhuma migration nova para executar.\n";
-  exit;
+  return;
 }
 
 $lastBatch = $capsule->table($migrationTableName)->max('batch') ?? 0;
