@@ -8,24 +8,24 @@ use InvalidArgumentException;
 use GuzzleHttp\Client as HttpClient;
 
 class ImageService {
-  private $supabase;
+  private $s3Client;
   private $bucketName = 'SitePost';
   private $url;
   private $httpClient;
 
   public function __construct(?S3Client $s3Client = null, ?HttpClient $httpClient = null) {
-    $this->url = $_ENV['SUPABASE_URL'] ?? '';
+    $this->url = $_ENV['B2_CLOUD_PUBLIC_URL'] ?? '';
     if ($s3Client) {
-      $this->supabase = $s3Client;
+      $this->s3Client = $s3Client;
     } else {
-      $this->supabase = new S3Client([
+      $this->s3Client = new S3Client([
         'version' => 'latest', 
-        'region' => $_ENV['SUPABASE_S3_REGION'] ?? 'us-east-1', 
-        'endpoint' => $_ENV['SUPABASE_S3_ENDPOINT'] ?? null, 
+        'region' => $_ENV['B2_CLOUD_S3_REGION'] ?? 'us-east-1', 
+        'endpoint' => $_ENV['B2_CLOUD_S3_ENDPOINT'] ?? null, 
         'use_path_style_endpoint' => true, 
         'credentials' => [
-          'key' => $_ENV['SUPABASE_S3_ACCESS_KEY_ID'] ?? '', 
-          'secret' => $_ENV['SUPABASE_S3_SECRET_ACCESS_KEY'] ?? '',
+          'key' => $_ENV['B2_CLOUD_S3_ACCESS_KEY_ID'] ?? '', 
+          'secret' => $_ENV['B2_CLOUD_S3_SECRET_ACCESS_KEY'] ?? '',
         ],
       ]);
     }
@@ -67,14 +67,18 @@ class ImageService {
       $filePath = uniqid('img_', true) . '.' . $extension;
 
       try {
-        $this->supabase->putObject(['Bucket' => $this->bucketName, 'Key' => $filePath, 'Body' => $decodedData, 'ContentType' => $mimeType, 'ACL' => 'public-read',]);
+        $this->s3Client->putObject([
+          'Bucket' => $this->bucketName,
+          'Key' => $filePath,
+          'Body' => $decodedData,
+          'ContentType' => $mimeType
+        ]);
 
-        $publicUrl = $this->url . '/storage/v1/object/public/' . $this->bucketName . '/' . $filePath;
+        $publicUrl = rtrim($this->url, '/') . '/' . $this->bucketName . '/' . $filePath;
         $finalUrls[] = $publicUrl;
 
-      } catch (RequestException $e) {
-        $responseBody = $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : $e->getMessage();
-        LogService::getInstance()->error('Falha no upload para o Supabase via Guzzle', ['error' => $responseBody]);
+      } catch (\Exception $e) {
+        LogService::getInstance()->error('Falha no upload para o B2 Cloud Storage', ['error' => $e->getMessage()]);
         throw new \Exception('Não foi possível fazer o upload da imagem.');
       }
     }
@@ -138,6 +142,128 @@ class ImageService {
     }
 
     return $preparedImages;
+  }
+
+  /**
+   * Baixa as imagens privadas do B2 Cloud e retorna como Base64 Data URI.
+   *
+   * @param array $links Array de URLs originais armazenadas.
+   * @return array Array mapeando [url_original => base64_data_uri]
+   */
+  public function downloadImagesAsBase64(array $links): array {
+    $results = [];
+    foreach ($links as $link) {
+      if (empty($link)) continue;
+
+      try {
+        $key = $this->extractKeyFromUrl($link);
+        $result = $this->s3Client->getObject([
+          'Bucket' => $this->bucketName,
+          'Key'    => $key
+        ]);
+
+        $body = $result['Body']->getContents();
+        $mimeType = $result['ContentType'] ?? 'image/jpeg';
+
+        $results[$link] = 'data:' . $mimeType . ';base64,' . base64_encode($body);
+      } catch (\Exception $e) {
+        LogService::getInstance()->error('Erro ao baixar imagem como Base64 do B2 Cloud', [
+          'link' => $link,
+          'error' => $e->getMessage()
+        ]);
+        $results[$link] = null;
+      }
+    }
+    return $results;
+  }
+
+  /**
+   * Gera URLs pré-assinadas temporárias (Presigned URLs) para acesso direto às imagens privadas.
+   *
+   * @param array $links Array de URLs originais armazenadas.
+   * @return array Array mapeando [url_original => presigned_url]
+   */
+  public function downloadImagesAsUrls(array $links): array {
+    $results = [];
+    foreach ($links as $link) {
+      if (empty($link)) continue;
+
+      try {
+        $key = $this->extractKeyFromUrl($link);
+        $command = $this->s3Client->getCommand('GetObject', [
+          'Bucket' => $this->bucketName,
+          'Key'    => $key
+        ]);
+
+        $request = $this->s3Client->createPresignedRequest($command, '+1 hour');
+        $presignedUrl = (string) $request->getUri();
+
+        $results[$link] = $presignedUrl;
+      } catch (\Exception $e) {
+        LogService::getInstance()->error('Erro ao gerar URL temporaria no B2 Cloud', [
+          'link' => $link,
+          'error' => $e->getMessage()
+        ]);
+        $results[$link] = null;
+      }
+    }
+    return $results;
+  }
+
+  /**
+   * Extrai a Key do arquivo a partir de uma URL armazenada.
+   *
+   * @param string $url URL completa da imagem.
+   * @return string A Key/Caminho do objeto no B2.
+   */
+  private function extractKeyFromUrl(string $url): string {
+    $bucketWithSlashes = '/' . $this->bucketName . '/';
+    $pos = strpos($url, $bucketWithSlashes);
+    if ($pos !== false) {
+      return substr($url, $pos + strlen($bucketWithSlashes));
+    }
+    return basename(parse_url($url, PHP_URL_PATH));
+  }
+
+  /**
+   * Coleta todas as URLs das imagens dos posts fornecidos, gera URLs pré-assinadas
+   * e as anexa como o atributo dinâmico 'url_assinado' em cada modelo de imagem.
+   *
+   * @param mixed $posts Um post único ou uma coleção/array de posts.
+   * @return mixed Os posts com as URLs assinadas anexadas às suas imagens.
+   */
+  public function appendPresignedUrlsToPosts($posts) {
+    $urls = [];
+    $isSingle = $posts instanceof \ApiSite\Models\Post;
+    $iterablePosts = $isSingle ? [$posts] : $posts;
+
+    foreach ($iterablePosts as $post) {
+      if ($post->relationLoaded('images')) {
+        foreach ($post->images as $image) {
+          if (!empty($image->url)) {
+            $urls[] = $image->url;
+          }
+        }
+      }
+    }
+
+    if (empty($urls)) {
+      return $posts;
+    }
+
+    $urlsMap = $this->downloadImagesAsUrls(array_unique($urls));
+
+    foreach ($iterablePosts as $post) {
+      if ($post->relationLoaded('images')) {
+        foreach ($post->images as $image) {
+          if (!empty($image->url)) {
+            $image->setAttribute('url_assinado', $urlsMap[$image->url] ?? null);
+          }
+        }
+      }
+    }
+
+    return $posts;
   }
 
 }

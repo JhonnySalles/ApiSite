@@ -103,6 +103,10 @@ $router->mount('/api', function () use ($router) {
   // Endpoint de Tags (ex: /api/tags)
   $router->get('/tags', 'TagController@tags');
 
+  // Endpoints de Imagens (ex: /api/images)
+  $router->post('/images/download-base64', 'ImageController@downloadBase64');
+  $router->post('/images/download-url', 'ImageController@downloadUrl');
+
   // Endpoint de Plataforma (ex: /api/platforms/tumblr/blogs)
   $router->get('/platform/tumblr/blogs', 'PlatformController@getTumblrBlogs');
 

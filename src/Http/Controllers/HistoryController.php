@@ -106,6 +106,9 @@ class HistoryController {
     try {
       $historyPaginator = $this->publishService->getHistoryPaginated($page, $size);
 
+      $imageService = new \ApiSite\Services\ImageService();
+      $imageService->appendPresignedUrlsToPosts($historyPaginator->getCollection());
+
       $transformedData = $historyPaginator->getCollection()->map(function ($post) {
         return [
           'id' => $post->id,
@@ -117,6 +120,7 @@ class HistoryController {
           'images' => $post->images->map(function ($image) {
             return [
               'url' => $image->url,
+              'url_assinado' => $image->url_assinado,
               'plataformas' => $image->plataformas,
             ];
           }),

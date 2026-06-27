@@ -84,6 +84,8 @@ class DraftController {
     try {
       $payload = json_decode(file_get_contents('php://input'), true);
       $draft = $this->publishService->saveDraft($payload);
+      $imageService = new \ApiSite\Services\ImageService();
+      $imageService->appendPresignedUrlsToPosts($draft);
       http_response_code(201);
       header('Content-Type: application/json');
       echo $draft->toJson();
@@ -239,6 +241,8 @@ class DraftController {
       $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
       $size = isset($_GET['size']) ? (int)$_GET['size'] : 10;
       $rascunhos = $this->publishService->getDraftsPaginated($page, $size);
+      $imageService = new \ApiSite\Services\ImageService();
+      $imageService->appendPresignedUrlsToPosts($rascunhos->getCollection());
       http_response_code(200);
       header('Content-Type: application/json');
       echo $rascunhos->toJson();
@@ -306,6 +310,8 @@ class DraftController {
   public function getOne(int $id) {
     try {
       $draft = $this->publishService->getDraft($id);
+      $imageService = new \ApiSite\Services\ImageService();
+      $imageService->appendPresignedUrlsToPosts($draft);
       http_response_code(200);
       header('Content-Type: application/json');
       echo $draft->toJson();
